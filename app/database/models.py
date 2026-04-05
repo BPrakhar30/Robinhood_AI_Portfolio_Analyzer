@@ -1,3 +1,10 @@
+"""SQLAlchemy ORM models for users, broker connections, and portfolio data.
+
+Defines schema and relationships consumed by repositories and API layers.
+Keep migrations/schema changes aligned with broker sync and auth flows.
+
+Added: 2026-04-03
+"""
 import enum
 from datetime import datetime, timezone
 from sqlalchemy import (
@@ -18,6 +25,7 @@ from app.database.engine import Base
 
 
 def utcnow():
+    # SQLAlchemy defaults alone do not attach timezone info; UTC-aware values avoid naive/aware bugs.
     return datetime.now(timezone.utc)
 
 
@@ -63,11 +71,13 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
     is_email_verified = Column(Boolean, default=False)
+    # Stores the *hashed* 6-digit OTP from email verification, not the plaintext code.
     email_verification_token = Column(String(255), nullable=True, index=True)
     email_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+    # cascade="all, delete-orphan": deleting a user removes dependent rows (GDPR-style cleanup path).
     broker_connections = relationship("BrokerConnection", back_populates="user", cascade="all, delete-orphan")
     positions = relationship("Position", back_populates="user", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
@@ -76,6 +86,7 @@ class User(Base):
 
 class BrokerConnection(Base):
     __tablename__ = "broker_connections"
+    # One row per (user, broker_type) — prevents duplicate connections for the same integration.
     __table_args__ = (
         UniqueConstraint("user_id", "broker_type", name="uq_user_broker"),
     )
@@ -89,6 +100,7 @@ class BrokerConnection(Base):
     token_expires_at = Column(DateTime(timezone=True), nullable=True)
     last_sync_at = Column(DateTime(timezone=True), nullable=True)
     sync_error_message = Column(Text, nullable=True)
+    # Python name metadata_ maps to DB column "metadata" — avoids shadowing SQLAlchemy's reserved ``metadata``.
     metadata_ = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

@@ -1,3 +1,9 @@
+/**
+ * Shared TypeScript types for API responses. They mirror backend Pydantic schemas;
+ * keep them aligned manually when the API changes (no codegen yet).
+ *
+ * Added: 2026-04-03
+ */
 export interface UserResponse {
   id: number;
   email: string;

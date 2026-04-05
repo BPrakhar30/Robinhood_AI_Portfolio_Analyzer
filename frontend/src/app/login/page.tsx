@@ -1,4 +1,11 @@
 "use client";
+/**
+ * Login page: email/password form, success banners from query params, and handling
+ * for unverified accounts. On 403-style “verify your email” errors, the submitted
+ * email is stored so the user can resend a code and go to `/verify-email`.
+ *
+ * Added: 2026-04-03
+ */
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -44,6 +51,7 @@ function LoginForm() {
     setUnverifiedEmail(null);
     login.mutate(data, {
       onError: (error: Error) => {
+        // Backend signals unverified user; show resend CTA instead of generic error.
         if (error.message?.toLowerCase().includes("verify your email")) {
           setUnverifiedEmail(data.email);
         }

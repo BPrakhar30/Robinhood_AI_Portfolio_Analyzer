@@ -1,4 +1,13 @@
 "use client";
+/**
+ * React Query hooks for auth: current user, login, register, verify, resend, logout.
+ *
+ * - `useRegister` navigates to `/verify-email` on success.
+ * - `useLogin` invalidates `["auth"]` queries and redirects to `/dashboard`.
+ * - `useResendVerification` is shared by the login and registration flows.
+ *
+ * Added: 2026-04-03
+ */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -23,6 +32,7 @@ export function useCurrentUser() {
         setUser(user);
         return user;
       } catch {
+        // Unauthenticated or network failure: stop blocking the shell without throwing.
         setLoading(false);
         return null;
       }

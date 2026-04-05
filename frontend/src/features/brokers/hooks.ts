@@ -1,4 +1,13 @@
 "use client";
+/**
+ * React Query layer for brokers: connections, positions, transactions, summary, CSV.
+ *
+ * Mutations invalidate `["broker"]` so lists and portfolio data refetch together.
+ * Stale times: connections/summary 30s, positions/transactions 60s, CSV template
+ * `Infinity` (static spec).
+ *
+ * Added: 2026-04-03
+ */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchConnections,

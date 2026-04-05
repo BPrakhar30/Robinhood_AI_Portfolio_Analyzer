@@ -1,4 +1,12 @@
 "use client";
+/**
+ * Registration page with password strength UI. On 409 (account exists), offers
+ * resend verification or login. Submit/actions use native `<button>` elements
+ * (not shadcn `Button`) so React Hook Form submission and `type="button"`
+ * actions behave reliably.
+ *
+ * Added: 2026-04-03
+ */
 import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -38,6 +46,7 @@ export default function RegisterPage() {
     registerMutation.mutate(data, {
       onError: (error) => {
         if (error instanceof APIError && error.status === 409) {
+          // May be unverified existing account—surface recovery paths.
           setExistingEmail(data.email);
         }
       },

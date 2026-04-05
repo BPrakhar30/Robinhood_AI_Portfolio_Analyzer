@@ -1,3 +1,12 @@
+"""
+Authentication service: user registration, login, email verification, and JWT access tokens.
+
+``resend_verification`` always returns generic success-style messaging so callers cannot infer
+whether an email is registered (mitigates email enumeration). ``login`` requires an active,
+email-verified account before issuing a token.
+
+Added: 2026-04-03
+"""
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -95,6 +104,7 @@ class AuthService:
         if user.email_verification_expires_at:
             expiry = user.email_verification_expires_at
             now = datetime.now(timezone.utc)
+            # ORM/SQLite often yields naive datetimes; treat stored expiry as UTC before comparing.
             if expiry.tzinfo is None:
                 expiry = expiry.replace(tzinfo=timezone.utc)
             if expiry < now:
@@ -118,6 +128,7 @@ class AuthService:
         return user
 
     async def resend_verification(self, email: str) -> dict:
+        # Same outward message for missing vs present email to avoid email enumeration.
         result = await self._session.execute(
             select(User).where(User.email == email)
         )
@@ -165,6 +176,7 @@ class AuthService:
                 detail="Please verify your email address before logging in.",
             )
 
+        # Only verified, active users receive a JWT (defense-in-depth with get_current_user).
         token = self._create_access_token(user_id=user.id)
         expires_in = self._settings.jwt_access_token_expire_minutes * 60
 

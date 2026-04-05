@@ -1,3 +1,10 @@
+/**
+ * Auth API calls (register, verify, login, current user). `loginUser` persists
+ * the JWT via `setAuthToken` in sessionStorage immediately after a successful
+ * login response.
+ *
+ * Added: 2026-04-03
+ */
 import { api, setAuthToken } from "@/lib/api/client";
 import type {
   UserResponse,

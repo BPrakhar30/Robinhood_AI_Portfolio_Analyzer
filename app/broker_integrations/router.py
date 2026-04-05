@@ -1,3 +1,12 @@
+"""
+HTTP API for broker connect/disconnect, Plaid link token, CSV import, and read models.
+
+``_api_response`` is the shared envelope (status/data/error/timestamp) expected by client code.
+Connect/disconnect/sync and Plaid link-token handlers catch ``AppException`` and re-raise as
+``HTTPException`` so broker-layer errors surface with consistent HTTP status and ``detail``.
+
+Added: 2026-04-03
+"""
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -32,6 +41,7 @@ router = APIRouter(prefix="/broker", tags=["Broker Connections"])
 
 
 def _api_response(data=None, error=None, status_val="success"):
+    """Uniform success payload for mutating broker routes (team API contract)."""
     return {
         "status": status_val,
         "data": data,

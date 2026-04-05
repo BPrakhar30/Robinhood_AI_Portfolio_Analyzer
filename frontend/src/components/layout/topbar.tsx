@@ -1,4 +1,13 @@
 "use client";
+/**
+ * Top bar: mobile menu sheet, system health badge, user menu with logout/settings.
+ *
+ * Avatar initials: first letters of `full_name`, else first letter of email, else
+ * `"U"`. The dropdown trigger adds `cursor-pointer` explicitly because the ghost
+ * button variant does not.
+ *
+ * Added: 2026-04-03
+ */
 import { useAuthStore } from "@/features/auth/store";
 import { useLogout } from "@/features/auth/hooks";
 import { useHealth } from "@/features/system/hooks";

@@ -1,3 +1,15 @@
+"""Custom API exception hierarchy mapped to HTTP responses.
+
+All types subclass ``AppException`` so ``main.app_exception_handler`` can format
+consistent JSON errors. ``BrokerAuthenticationError`` intentionally uses 502
+(Bad Gateway), not 401: upstream broker/token failures should not be conflated
+with our JWT/session expiry, which avoids the frontend auto-logging users out
+when only a broker link breaks.
+
+Added: 2026-04-03
+"""
+
+
 class AppException(Exception):
     """Base exception for the application."""
 

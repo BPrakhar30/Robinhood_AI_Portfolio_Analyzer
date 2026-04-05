@@ -1,3 +1,14 @@
+"""
+Broker orchestration: adapter selection, encrypted token persistence, and portfolio sync into ORM models.
+
+``_get_adapter`` is the factory for broker-specific implementations. ``_upsert_connection`` merges on
+(user, broker_type) to avoid duplicate rows. ``_sync_portfolio`` deletes then re-inserts positions
+and transactions for the connection so stale symbols cannot linger. Tokens are sealed at rest with
+the app Fernet encryptor. Robinhood re-sync is rejected intentionally—robin_stocks session tokens
+expire quickly and cannot be reliably refreshed from DB alone.
+
+Added: 2026-04-03
+"""
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -265,8 +276,7 @@ class BrokerService:
                 if not connection.access_token_encrypted:
                     raise BrokerAuthenticationError("No stored token — reconnection required")
                 token = self._encryptor.decrypt(connection.access_token_encrypted)
-                # For Robinhood, we'd need to re-login or use stored session
-                # robin_stocks session management handles this internally
+                # Short-lived robin_stocks tokens: force full reconnect instead of silent stale sync
                 raise PortfolioSyncError(
                     "Robinhood re-sync requires re-authentication (session tokens are short-lived)",
                     details={"broker": "robinhood"},
@@ -301,7 +311,7 @@ class BrokerService:
         refresh_token: str = "",
         metadata: Optional[dict] = None,
     ) -> BrokerConnection:
-        """Create or update a broker connection, encrypting tokens before storage."""
+        """Insert or refresh the user's row for this broker; Fernet-encrypt secrets before flush."""
         result = await self._session.execute(
             select(BrokerConnection).where(
                 BrokerConnection.user_id == user_id,
@@ -346,8 +356,8 @@ class BrokerService:
         user_id: int,
     ):
         """
-        Fetch positions and transactions from the broker adapter and persist to DB.
-        Replaces existing data for this connection to avoid duplicates.
+        Pull adapter snapshots into SQLAlchemy. Full replace (delete then insert) per connection
+        keeps the DB mirror aligned with the broker without merge logic.
         """
         logger.info(
             "Portfolio sync started",
@@ -372,7 +382,7 @@ class BrokerService:
             logger.warning(f"Failed to fetch cash balance (non-critical): {e}")
             cash_balance = 0.0
 
-        # Clear existing positions/transactions for this connection
+        # Full replace avoids orphaned rows when the broker drops symbols
         existing_positions = await self._session.execute(
             select(Position).where(Position.broker_connection_id == connection.id)
         )

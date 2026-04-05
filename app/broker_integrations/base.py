@@ -1,3 +1,12 @@
+"""
+Broker integration contracts: abstract adapter interface and shared dataclasses.
+
+Follows the Interface-Based Broker Integration pattern—Robinhood, Plaid, and CSV adapters all
+implement ``BrokerInterface`` so orchestration code can call them polymorphically. The
+dataclasses normalize broker-specific payloads into one in-app shape.
+
+Added: 2026-04-03
+"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime

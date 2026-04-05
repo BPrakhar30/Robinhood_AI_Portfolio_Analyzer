@@ -1,3 +1,12 @@
+"""
+Plaid broker adapter—primary fallback when direct Robinhood OAuth is not used.
+
+``PLAID_ENV_MAP`` maps app config ``development`` to Plaid Sandbox because this SDK revision
+does not expose a separate Development host constant. ``set_access_token`` rehydrates tokens
+decrypted from the database for sync/reconnect flows without repeating Link.
+
+Added: 2026-04-03
+"""
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -27,6 +36,7 @@ from app.utils.exceptions import (
 
 logger = get_logger("broker_integrations.plaid")
 
+# "development" -> Sandbox: no distinct Development enum in this plaid-python version
 PLAID_ENV_MAP = {
     "sandbox": plaid.Environment.Sandbox,
     "development": plaid.Environment.Sandbox,

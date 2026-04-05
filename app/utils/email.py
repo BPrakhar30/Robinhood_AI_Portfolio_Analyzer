@@ -1,3 +1,12 @@
+"""Email verification helpers: OTP generation and sending.
+
+Development mode logs the code to the console so SMTP is optional locally.
+Production requires ``smtp_*`` settings; missing host results in a warning and
+no send. The HTML template uses letter-spacing and spaced digits so the code
+stays readable in common email clients (accessibility / UX).
+
+Added: 2026-04-03
+"""
 import random
 import string
 from datetime import datetime, timedelta, timezone
@@ -24,6 +33,7 @@ async def send_verification_email(
 ) -> None:
     settings = get_settings()
 
+    # Dev: no SMTP — copy the code from logs. Prod: requires smtp_host below.
     if settings.app_env == Environment.DEVELOPMENT:
         logger.info(
             "\n" + "=" * 60 + "\n"
@@ -36,6 +46,7 @@ async def send_verification_email(
         )
         return
 
+    # Non-dev without SMTP: fail soft (log) so signup flow doesn't crash in misconfigured envs.
     if not settings.smtp_host:
         logger.warning(
             "SMTP not configured — cannot send verification email",
@@ -61,6 +72,7 @@ async def send_verification_email(
             "If you did not create an account, you can safely ignore this email."
         )
 
+        # Spaced + letter-spacing in HTML improves legibility in narrow/mobile mail clients.
         spaced_code = " ".join(code)
         html = f"""\
 <html>

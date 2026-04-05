@@ -1,3 +1,11 @@
+"""
+REST routes for authentication: register, verify email, resend code, login, and current user.
+
+``/resend-verification`` delegates to the service layer, which uses generic responses so
+clients cannot distinguish unknown emails from known ones (anti-enumeration).
+
+Added: 2026-04-03
+"""
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

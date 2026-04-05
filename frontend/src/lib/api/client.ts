@@ -1,3 +1,19 @@
+/**
+ * Centralized HTTP client for the backend API: base URL, JSON, Bearer auth from
+ * sessionStorage, and consistent error shaping.
+ *
+ * Auto-logout (clear token + redirect to /login) runs only on 401 from `/auth/me`
+ * and `/auth/login`, not from broker endpoints—so a bad broker session does not
+ * sign the user out of the app.
+ *
+ * Tokens live in sessionStorage (not localStorage) so they disappear when the tab
+ * closes.
+ *
+ * `USER_FRIENDLY_ERRORS` supplies copy when the response has no `detail` /
+ * `error_message` field.
+ *
+ * Added: 2026-04-03
+ */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export interface APIResponse<T = unknown> {
@@ -79,6 +95,7 @@ export async function apiClient<T>(
       }
 
       if (response.status === 401) {
+        // Narrow scope: broker 401s should surface as errors, not global logout.
         const isAuthEndpoint =
           endpoint.includes("/auth/me") || endpoint.includes("/auth/login");
         if (isAuthEndpoint) {

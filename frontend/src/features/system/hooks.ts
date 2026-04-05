@@ -1,4 +1,10 @@
 "use client";
+/**
+ * System health queries for the shell (e.g. topbar badge). `useHealth` refetches
+ * every 60s via `refetchInterval` so status stays reasonably fresh.
+ *
+ * Added: 2026-04-03
+ */
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import type { HealthResponse, StatusResponse } from "@/lib/api/types";

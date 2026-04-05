@@ -1,3 +1,9 @@
+/**
+ * Broker integration API helpers. All routes expect a logged-in user; the shared
+ * `api` client attaches the Bearer token automatically.
+ *
+ * Added: 2026-04-03
+ */
 import { api } from "@/lib/api/client";
 import type {
   BrokerConnectionResponse,

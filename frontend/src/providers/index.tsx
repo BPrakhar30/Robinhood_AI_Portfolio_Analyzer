@@ -1,4 +1,13 @@
 "use client";
+/**
+ * App-wide providers: React Query, tooltips, toast.
+ *
+ * `QueryClient` is created once with `useState(lazy init)` so it is not recreated
+ * on re-renders (important under the App Router). Defaults: `retry: 1` and
+ * `refetchOnWindowFocus: false` for lighter, less noisy fetching.
+ *
+ * Added: 2026-04-03
+ */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";

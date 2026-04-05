@@ -1,3 +1,15 @@
+"""FastAPI application entry: middleware, routers, and global exception handling.
+
+Startup/shutdown run through the ``lifespan`` context manager (e.g. dev-only
+``init_db``). CORS allows all origins (``*``) only when ``debug`` is true;
+production must use an explicit allowlist.
+
+``AppException`` and a catch-all ``Exception`` handler both return sanitized
+JSON so clients never see raw stack traces. OpenAPI UIs (``docs_url``,
+``redoc_url``) are disabled when not in debug mode.
+
+Added: 2026-04-03
+"""
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -35,10 +47,12 @@ app = FastAPI(
                 "securely connects accounts, analyzes portfolios, and provides AI-driven insights.",
     version="0.1.0",
     lifespan=lifespan,
+    # /docs and /redoc off in production to reduce exposed surface.
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
 )
 
+# Debug: permissive CORS for local frontends. Production: set real origins (empty list here is a safe default).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if settings.debug else [],

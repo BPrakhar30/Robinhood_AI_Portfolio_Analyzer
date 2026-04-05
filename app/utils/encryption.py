@@ -1,3 +1,12 @@
+"""Fernet symmetric encryption for broker OAuth tokens at rest.
+
+Fintech expectation: tokens must never be stored plaintext. ``get_encryptor()``
+returns a process-wide singleton so all callers share one key-backed Fernet
+instance. If ``encryption_key`` is unset, a random key is generated in memory
+— ciphertext becomes unreadable after restart until a stable key is configured.
+
+Added: 2026-04-03
+"""
 from cryptography.fernet import Fernet, InvalidToken
 from app.config import get_settings
 from app.utils.exceptions import EncryptionError
@@ -13,6 +22,7 @@ class TokenEncryptor:
         settings = get_settings()
         key = settings.encryption_key
         if not key:
+            # Ephemeral key: fine for local experiments; production must set ENCRYPTION_KEY.
             key = Fernet.generate_key().decode()
         try:
             self._fernet = Fernet(key.encode() if isinstance(key, str) else key)
@@ -66,6 +76,7 @@ _encryptor: TokenEncryptor | None = None
 
 
 def get_encryptor() -> TokenEncryptor:
+    # Lazy singleton — first caller initializes; avoids import-time side effects.
     global _encryptor
     if _encryptor is None:
         _encryptor = TokenEncryptor()

@@ -1,3 +1,12 @@
+"""
+CSV portfolio import—last-resort path when OAuth/Plaid are unavailable.
+
+Headers are normalized (trim, lower, spaces to underscores) so user spreadsheets stay forgiving.
+When ``unrealized_gains`` is absent/zero but ``current_price`` is present, unrealized P/L is derived.
+``SAMPLE_CSV_TEMPLATE`` doubles as documentation and the downloadable starter file.
+
+Added: 2026-04-03
+"""
 import io
 from datetime import datetime, timezone
 from typing import Optional
@@ -26,6 +35,7 @@ REQUIRED_TRANSACTION_COLUMNS = {"symbol", "transaction_type", "quantity", "price
 
 OPTIONAL_TRANSACTION_COLUMNS = {"total_amount", "fees", "executed_at"}
 
+# Shipped to clients as sample data and inline format reference
 SAMPLE_CSV_TEMPLATE = """symbol,name,quantity,average_cost,current_price,purchase_date,realized_gains,unrealized_gains,asset_type,sector
 AAPL,Apple Inc,10,150.00,175.50,2024-01-15,0,255.00,stock,Technology
 NVDA,NVIDIA Corp,5,450.00,890.00,2024-03-01,0,2200.00,stock,Technology
@@ -82,6 +92,7 @@ class CSVImportAdapter(BrokerInterface):
 
         try:
             df = pd.read_csv(io.StringIO(csv_content))
+            # Flexible header matching across common spreadsheet exports
             df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
         except Exception as e:
             raise CSVParseError(f"Failed to parse CSV file: {e}", details={"filename": self._filename})
@@ -165,6 +176,7 @@ class CSVImportAdapter(BrokerInterface):
                     except (ValueError, TypeError):
                         pass
 
+                # Infer unrealized when users omit the column but supply mark and cost
                 if unrealized == 0 and current_price > 0:
                     unrealized = (current_price - avg_cost) * quantity
 

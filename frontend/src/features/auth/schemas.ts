@@ -1,3 +1,9 @@
+/**
+ * Zod schemas for auth forms (client-side only; API validation uses Pydantic).
+ * Password length bounds match the backend (8–128 characters).
+ *
+ * Added: 2026-04-03
+ */
 import { z } from "zod";
 
 export const loginSchema = z.object({

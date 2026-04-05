@@ -1,4 +1,15 @@
 "use client";
+/**
+ * Desktop sidebar: primary nav, optional collapse, and a “Coming soon” section.
+ *
+ * `ICON_MAP` uses string keys; `"Link"` maps to Lucide’s `LinkIcon` because the
+ * icon name collides with Next’s `Link`. Active state treats a path as active if
+ * it equals the href or is a child (`pathname.startsWith(href + "/")`). When
+ * collapsed, primary and placeholder rows wrap in tooltips for discoverability.
+ * `FUTURE_NAV_ITEMS` are non-navigating placeholders (`href: "#"`).
+ *
+ * Added: 2026-04-03
+ */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -76,6 +87,7 @@ export function SidebarNav() {
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
         {NAV_ITEMS.map((item) => {
           const Icon = ICON_MAP[item.icon];
+          // Require `href + "/"` for prefixes so `/broker` does not activate for `/brokers`.
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
           const link = (

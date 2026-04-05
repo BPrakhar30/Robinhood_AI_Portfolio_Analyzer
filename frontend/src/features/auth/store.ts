@@ -1,4 +1,12 @@
 "use client";
+/**
+ * Client-side auth slice: user, derived `isAuthenticated`, and loading gate.
+ *
+ * `isLoading` defaults to true so protected UI does not flash “logged out” while
+ * the initial `/auth/me` request is in flight.
+ *
+ * Added: 2026-04-03
+ */
 import { create } from "zustand";
 import type { UserResponse } from "@/lib/api/types";
 import { clearAuthToken } from "@/lib/api/client";

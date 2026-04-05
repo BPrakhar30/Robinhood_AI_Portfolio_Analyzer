@@ -1,3 +1,11 @@
+"""
+Pydantic request/response models for auth endpoints.
+
+Password length bounds enforce minimum strength and a reasonable upper bound for DoS resistance.
+``model_config = {"from_attributes": True}`` lets responses hydrate from SQLAlchemy models.
+
+Added: 2026-04-03
+"""
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
@@ -5,6 +13,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 class UserCreate(BaseModel):
     email: EmailStr
+    # min_length 8 / max 128: strength policy and bounded hashing cost (DoS)
     password: str = Field(..., min_length=8, max_length=128)
     full_name: Optional[str] = None
 
@@ -22,7 +31,7 @@ class UserResponse(BaseModel):
     is_email_verified: bool
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True}  # ORM -> Pydantic
 
 
 class RegistrationResponse(BaseModel):
@@ -39,7 +48,7 @@ class TokenResponse(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     email: EmailStr
-    code: str = Field(..., min_length=6, max_length=6)
+    code: str = Field(..., min_length=6, max_length=6)  # fixed-length OTP
 
 
 class ResendVerificationRequest(BaseModel):

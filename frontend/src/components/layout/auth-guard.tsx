@@ -1,4 +1,13 @@
 "use client";
+/**
+ * Wraps protected app routes: shows a skeleton until auth is known, then renders
+ * children or redirects to login.
+ *
+ * Waits on both Zustand (`isLoading`) and the `useCurrentUser` query so a hard
+ * refresh does not redirect before `/auth/me` finishes.
+ *
+ * Added: 2026-04-03
+ */
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/features/auth/store";

@@ -1,4 +1,11 @@
 "use client";
+/**
+ * Email OTP entry: six single-digit inputs. Auto-submits when all cells are filled;
+ * paste on the row fills digits and submits if the paste is six digits. `email`
+ * comes from `?email=` (set by register/login resend flows).
+ *
+ * Added: 2026-04-03
+ */
 import { Suspense, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -136,6 +143,7 @@ function VerifyEmailContent() {
               <p className="text-sm font-medium text-center">
                 Enter verification code
               </p>
+              {/* Paste targets the container so one gesture fills all inputs (see handlePaste). */}
               <div
                 className="flex justify-center gap-2"
                 onPaste={handlePaste}

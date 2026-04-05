@@ -1,3 +1,14 @@
+"""Application settings loaded from environment via pydantic-settings.
+
+Centralizes configuration with env-based overrides (.env and process env).
+``get_settings()`` is memoized with ``@lru_cache`` so a single Settings instance
+is shared process-wide (singleton-style access without a global mutable object).
+
+Default field values exist for local development convenience only; production
+deployments must override secrets, database URLs, and related values via env.
+
+Added: 2026-04-03
+"""
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from functools import lru_cache

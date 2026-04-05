@@ -1,3 +1,12 @@
+"""
+Robinhood broker adapter via ``robin_stocks`` (synchronous library).
+
+All blocking calls run in ``run_in_executor`` with a timeout so the async stack stays responsive.
+Crypto holdings are fetched in a separate path; failures are logged and swallowed so equity data
+still returns. ``store_session=False`` keeps tokens out of robin_stocks' on-disk session files.
+
+Added: 2026-04-03
+"""
 import asyncio
 from datetime import datetime, timezone
 from typing import Optional
@@ -79,7 +88,7 @@ class RobinhoodAdapter(BrokerInterface):
                 "username": username,
                 "password": password,
                 "expiresIn": 86400,
-                "store_session": False,
+                "store_session": False,  # do not persist tokens to local robin_stocks files
             }
             if mfa_code:
                 login_kwargs["mfa_code"] = mfa_code
@@ -200,7 +209,7 @@ class RobinhoodAdapter(BrokerInterface):
             logger.error(f"Failed to fetch positions: {e}", extra={"event": "positions_error", "error": str(e)})
             raise BrokerConnectionError(f"Failed to fetch Robinhood positions: {e}")
 
-        # Also fetch crypto positions
+        # Supplemental path: crypto failures are non-fatal for the overall positions response
         try:
             crypto_positions = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
