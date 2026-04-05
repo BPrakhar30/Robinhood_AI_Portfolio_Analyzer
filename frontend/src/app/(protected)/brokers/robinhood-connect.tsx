@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useConnectRobinhood } from "@/features/brokers/hooks";
-import { toast } from "sonner";
 
 const schema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -37,11 +36,9 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
   const onSubmit = async (data: FormData) => {
     try {
       await connectMutation.mutateAsync(data);
-      toast.success("Robinhood account connected successfully");
       onSuccess();
-    } catch (e: any) {
-      const msg = e.message || "Connection failed.";
-      toast.error(`${msg} You can also try Plaid or CSV import.`);
+    } catch {
+      // Error is shown inline via connectMutation.isError
     }
   };
 

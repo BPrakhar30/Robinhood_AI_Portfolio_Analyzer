@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useConnectCSV, useCSVTemplate } from "@/features/brokers/hooks";
-import { toast } from "sonner";
 
 interface FormData {
   cash_balance: number;
@@ -33,6 +32,7 @@ export function CSVImportForm({ onSuccess }: Props) {
   const [csvContent, setCSVContent] = useState("");
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<string[]>([]);
+  const [fileError, setFileError] = useState("");
 
   const connectMutation = useConnectCSV();
   const { data: templateData } = useCSVTemplate();
@@ -51,9 +51,10 @@ export function CSVImportForm({ onSuccess }: Props) {
     if (!file) return;
 
     if (!file.name.endsWith(".csv")) {
-      toast.error("Please upload a .csv file");
+      setFileError("Please upload a .csv file");
       return;
     }
+    setFileError("");
 
     setFileName(file.name);
     const reader = new FileReader();
@@ -76,12 +77,12 @@ export function CSVImportForm({ onSuccess }: Props) {
     a.download = "portfolio_template.csv";
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Template downloaded");
+    // Template download initiated via browser
   };
 
   const onSubmit = async (data: FormData) => {
     if (!csvContent) {
-      toast.error("Please upload a CSV file first");
+      setFileError("Please upload a CSV file first");
       return;
     }
 
@@ -91,10 +92,9 @@ export function CSVImportForm({ onSuccess }: Props) {
         cash_balance: data.cash_balance,
         filename: fileName || "upload.csv",
       });
-      toast.success("Portfolio imported successfully");
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.message || "CSV import failed. Check your file format.");
+    } catch {
+      // Error is shown inline via connectMutation.isError
     }
   };
 
@@ -183,6 +183,12 @@ export function CSVImportForm({ onSuccess }: Props) {
             <p className="text-xs text-destructive">{errors.cash_balance.message}</p>
           )}
         </div>
+
+        {fileError && (
+          <Alert variant="destructive">
+            <AlertDescription className="text-sm">{fileError}</AlertDescription>
+          </Alert>
+        )}
 
         {connectMutation.isError && (
           <Alert variant="destructive">

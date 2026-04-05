@@ -23,7 +23,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
 import { RobinhoodConnectForm } from "./robinhood-connect";
 import { CSVImportForm } from "./csv-import";
 
@@ -47,21 +46,11 @@ function BrokersContent() {
   const syncMutation = useSyncConnection();
 
   const handleDisconnect = async (id: number) => {
-    try {
-      await disconnectMutation.mutateAsync(id);
-      toast.success("Broker disconnected successfully");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to disconnect broker");
-    }
+    await disconnectMutation.mutateAsync(id);
   };
 
   const handleSync = async (id: number) => {
-    try {
-      await syncMutation.mutateAsync(id);
-      toast.success("Portfolio synced successfully");
-    } catch (e: any) {
-      toast.error(e.message || "Sync failed. Your last snapshot is still available.");
-    }
+    await syncMutation.mutateAsync(id);
   };
 
   if (error) {
