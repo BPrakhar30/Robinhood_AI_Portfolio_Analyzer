@@ -1,7 +1,11 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from functools import lru_cache
 from enum import Enum
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_ENV_FILE = _PROJECT_ROOT / ".env"
 
 
 class Environment(str, Enum):
@@ -42,6 +46,7 @@ class Settings(BaseSettings):
 
     # Market Data
     polygon_api_key: str = ""
+    finnhub_api_key: str = ""
     yahoo_finance_fallback: bool = True
 
     # Email / SMTP
@@ -62,7 +67,11 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+    model_config = {
+        "env_file": str(_ENV_FILE),
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 @lru_cache()

@@ -43,6 +43,7 @@ class PositionResponse(BaseModel):
     asset_type: str = "stock"
     sector: Optional[str] = None
     currency: str = "USD"
+    total_amount_invested: float = 0.0
     market_value: float = 0.0
     weight_percent: float = 0.0
 
@@ -86,6 +87,7 @@ class CSVTemplateResponse(BaseModel):
 
 class APIResponse(BaseModel):
     """Standard API response wrapper per developer guidelines."""
+
     status: str
     data: Optional[dict] = None
     error_message: Optional[str] = None

@@ -7,6 +7,7 @@ from typing import Optional
 @dataclass
 class PositionData:
     """Standardized position data returned by all broker adapters."""
+
     symbol: str
     name: str
     quantity: float
@@ -18,11 +19,13 @@ class PositionData:
     asset_type: str = "stock"
     sector: Optional[str] = None
     currency: str = "USD"
+    total_amount_invested: float = 0.0
 
 
 @dataclass
 class TransactionData:
     """Standardized transaction data returned by all broker adapters."""
+
     symbol: str
     transaction_type: str
     quantity: float
@@ -35,6 +38,7 @@ class TransactionData:
 @dataclass
 class AccountSummary:
     """Standardized account summary across all broker types."""
+
     total_value: float
     cash_balance: float
     positions_count: int

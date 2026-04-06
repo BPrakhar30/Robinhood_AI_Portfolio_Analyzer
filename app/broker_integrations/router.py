@@ -56,11 +56,13 @@ async def connect_robinhood(
             user=current_user,
             credentials=payload.model_dump(),
         )
-        return _api_response(data={
-            "connection_id": connection.id,
-            "broker_type": connection.broker_type.value,
-            "status": connection.status.value,
-        })
+        return _api_response(
+            data={
+                "connection_id": connection.id,
+                "broker_type": connection.broker_type.value,
+                "status": connection.status.value,
+            }
+        )
     except AppException as e:
         logger.error(f"Robinhood connect failed: {e.message}")
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -92,11 +94,13 @@ async def connect_plaid(
             user=current_user,
             public_token=payload.public_token,
         )
-        return _api_response(data={
-            "connection_id": connection.id,
-            "broker_type": connection.broker_type.value,
-            "status": connection.status.value,
-        })
+        return _api_response(
+            data={
+                "connection_id": connection.id,
+                "broker_type": connection.broker_type.value,
+                "status": connection.status.value,
+            }
+        )
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -116,11 +120,13 @@ async def connect_csv(
             cash_balance=payload.cash_balance,
             filename=payload.filename,
         )
-        return _api_response(data={
-            "connection_id": connection.id,
-            "broker_type": connection.broker_type.value,
-            "status": connection.status.value,
-        })
+        return _api_response(
+            data={
+                "connection_id": connection.id,
+                "broker_type": connection.broker_type.value,
+                "status": connection.status.value,
+            }
+        )
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -130,8 +136,18 @@ async def get_csv_template():
     """Download a sample CSV template for portfolio import."""
     return CSVTemplateResponse(
         template=CSVImportAdapter.get_sample_template(),
-        columns=["symbol", "name", "quantity", "average_cost", "current_price",
-                 "purchase_date", "realized_gains", "unrealized_gains", "asset_type", "sector"],
+        columns=[
+            "symbol",
+            "name",
+            "quantity",
+            "average_cost",
+            "current_price",
+            "purchase_date",
+            "realized_gains",
+            "unrealized_gains",
+            "asset_type",
+            "sector",
+        ],
         required_columns=["symbol", "quantity", "average_cost"],
     )
 
@@ -169,7 +185,9 @@ async def disconnect_broker(
     try:
         service = BrokerService(session)
         await service.disconnect_broker(current_user, connection_id)
-        return _api_response(data={"disconnected": True, "connection_id": connection_id})
+        return _api_response(
+            data={"disconnected": True, "connection_id": connection_id}
+        )
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -223,8 +241,13 @@ async def get_positions(
             asset_type=p.asset_type.value if p.asset_type else "stock",
             sector=p.sector,
             currency=p.currency or "USD",
+            total_amount_invested=p.total_amount_invested or 0,
             market_value=p.quantity * (p.current_price or 0),
-            weight_percent=round((p.quantity * (p.current_price or 0)) / total_value * 100, 2) if total_value > 0 else 0,
+            weight_percent=(
+                round((p.quantity * (p.current_price or 0)) / total_value * 100, 2)
+                if total_value > 0
+                else 0
+            ),
         )
         for p in positions
     ]

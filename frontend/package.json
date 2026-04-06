@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n backend,frontend -c blue,green \"cd .. && venv\\Scripts\\python -m uvicorn app.main:app --reload --port 8000\" \"next dev --port 3000\"",
+    "dev": "concurrently -n backend,frontend -c blue,green \"python -m uvicorn app.main:app --reload --port 8000 --app-dir ..\" \"next dev --port 3000\"",
     "dev:frontend": "next dev",
-    "dev:backend": "cd .. && venv\\Scripts\\python -m uvicorn app.main:app --reload --port 8000",
+    "dev:backend": "python -m uvicorn app.main:app --reload --port 8000 --app-dir ..",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

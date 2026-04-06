@@ -55,3 +55,6 @@ credentials.json
 service-account.json
 *.pem
 *.key
+
+# Local Testing
+testing/

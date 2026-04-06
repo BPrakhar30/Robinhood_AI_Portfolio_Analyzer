@@ -72,7 +72,9 @@ class BrokerService:
         self._session = session
         self._encryptor = get_encryptor()
 
-    async def connect_robinhood(self, user: User, credentials: dict) -> BrokerConnection:
+    async def connect_robinhood(
+        self, user: User, credentials: dict
+    ) -> BrokerConnection:
         """
         Connect a user's Robinhood account via OAuth.
 
@@ -137,7 +139,13 @@ class BrokerService:
 
         return connection
 
-    async def connect_csv(self, user: User, csv_content: str, cash_balance: float = 0.0, filename: str = "upload.csv") -> BrokerConnection:
+    async def connect_csv(
+        self,
+        user: User,
+        csv_content: str,
+        cash_balance: float = 0.0,
+        filename: str = "upload.csv",
+    ) -> BrokerConnection:
         """
         Import portfolio from CSV file.
 
@@ -151,11 +159,13 @@ class BrokerService:
             BrokerConnection model
         """
         adapter = CSVImportAdapter()
-        await adapter.authenticate({
-            "csv_content": csv_content,
-            "cash_balance": cash_balance,
-            "filename": filename,
-        })
+        await adapter.authenticate(
+            {
+                "csv_content": csv_content,
+                "cash_balance": cash_balance,
+                "filename": filename,
+            }
+        )
 
         connection = await self._upsert_connection(
             user_id=user.id,
@@ -186,7 +196,9 @@ class BrokerService:
         connection = result.scalar_one_or_none()
 
         if not connection:
-            raise BrokerConnectionError("Connection not found", details={"connection_id": connection_id})
+            raise BrokerConnectionError(
+                "Connection not found", details={"connection_id": connection_id}
+            )
 
         connection.status = ConnectionStatus.DISCONNECTED
         connection.access_token_encrypted = None
@@ -195,7 +207,11 @@ class BrokerService:
 
         logger.info(
             "Broker disconnected",
-            extra={"event": "broker_disconnected", "broker": connection.broker_type.value, "user_id": user.id},
+            extra={
+                "event": "broker_disconnected",
+                "broker": connection.broker_type.value,
+                "user_id": user.id,
+            },
         )
         return True
 
@@ -206,7 +222,9 @@ class BrokerService:
         )
         return list(result.scalars().all())
 
-    async def get_positions(self, user: User, connection_id: Optional[int] = None) -> list[Position]:
+    async def get_positions(
+        self, user: User, connection_id: Optional[int] = None
+    ) -> list[Position]:
         """
         Retrieve stored positions for a user, optionally filtered by connection.
 
@@ -220,7 +238,9 @@ class BrokerService:
         result = await self._session.execute(query)
         return list(result.scalars().all())
 
-    async def get_transactions(self, user: User, connection_id: Optional[int] = None, limit: int = 100) -> list[Transaction]:
+    async def get_transactions(
+        self, user: User, connection_id: Optional[int] = None, limit: int = 100
+    ) -> list[Transaction]:
         """Retrieve stored transactions for a user."""
         query = select(Transaction).where(Transaction.user_id == user.id)
         if connection_id:
@@ -263,7 +283,9 @@ class BrokerService:
         try:
             if connection.broker_type == BrokerType.ROBINHOOD:
                 if not connection.access_token_encrypted:
-                    raise BrokerAuthenticationError("No stored token — reconnection required")
+                    raise BrokerAuthenticationError(
+                        "No stored token — reconnection required"
+                    )
                 token = self._encryptor.decrypt(connection.access_token_encrypted)
                 # For Robinhood, we'd need to re-login or use stored session
                 # robin_stocks session management handles this internally
@@ -279,7 +301,9 @@ class BrokerService:
                 adapter.set_access_token(token)
 
             elif connection.broker_type == BrokerType.CSV:
-                raise PortfolioSyncError("CSV connections cannot be re-synced — re-upload the file")
+                raise PortfolioSyncError(
+                    "CSV connections cannot be re-synced — re-upload the file"
+                )
 
             await self._sync_portfolio(adapter, connection, user.id)
             return connection
@@ -287,7 +311,10 @@ class BrokerService:
         except (PortfolioSyncError, BrokerAuthenticationError, BrokerConnectionError):
             raise
         except Exception as e:
-            logger.error(f"Sync failed: {e}", extra={"event": "sync_error", "connection_id": connection_id})
+            logger.error(
+                f"Sync failed: {e}",
+                extra={"event": "sync_error", "connection_id": connection_id},
+            )
             connection.status = ConnectionStatus.ERROR
             connection.sync_error_message = str(e)
             await self._session.flush()
@@ -310,8 +337,12 @@ class BrokerService:
         )
         connection = result.scalar_one_or_none()
 
-        encrypted_access = self._encryptor.encrypt(access_token) if access_token else None
-        encrypted_refresh = self._encryptor.encrypt(refresh_token) if refresh_token else None
+        encrypted_access = (
+            self._encryptor.encrypt(access_token) if access_token else None
+        )
+        encrypted_refresh = (
+            self._encryptor.encrypt(refresh_token) if refresh_token else None
+        )
 
         if connection:
             connection.access_token_encrypted = encrypted_access
@@ -335,7 +366,11 @@ class BrokerService:
 
         logger.info(
             "Broker connection saved",
-            extra={"event": "connection_saved", "broker": broker_type.value, "user_id": user_id},
+            extra={
+                "event": "connection_saved",
+                "broker": broker_type.value,
+                "user_id": user_id,
+            },
         )
         return connection
 
@@ -351,7 +386,10 @@ class BrokerService:
         """
         logger.info(
             "Portfolio sync started",
-            extra={"event": "portfolio_sync_start", "broker": connection.broker_type.value},
+            extra={
+                "event": "portfolio_sync_start",
+                "broker": connection.broker_type.value,
+            },
         )
 
         try:
@@ -401,6 +439,7 @@ class BrokerService:
                 asset_type=ASSET_TYPE_MAP.get(pd_.asset_type, AssetType.STOCK),
                 sector=pd_.sector,
                 currency=pd_.currency,
+                total_amount_invested=pd_.total_amount_invested,
             )
             self._session.add(position)
 
@@ -410,7 +449,9 @@ class BrokerService:
                 user_id=user_id,
                 broker_connection_id=connection.id,
                 symbol=td_.symbol,
-                transaction_type=TXN_TYPE_MAP.get(td_.transaction_type, TransactionType.BUY),
+                transaction_type=TXN_TYPE_MAP.get(
+                    td_.transaction_type, TransactionType.BUY
+                ),
                 quantity=td_.quantity,
                 price=td_.price,
                 total_amount=td_.total_amount,
@@ -420,7 +461,9 @@ class BrokerService:
             self._session.add(txn)
 
         # Save portfolio snapshot
-        total_value = sum(p.quantity * p.current_price for p in positions_data) + cash_balance
+        total_value = (
+            sum(p.quantity * p.current_price for p in positions_data) + cash_balance
+        )
         snapshot = PortfolioSnapshot(
             user_id=user_id,
             broker_connection_id=connection.id,

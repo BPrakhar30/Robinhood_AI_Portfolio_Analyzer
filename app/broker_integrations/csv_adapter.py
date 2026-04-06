@@ -10,6 +10,10 @@ from app.broker_integrations.base import (
     TransactionData,
     AccountSummary,
 )
+from app.broker_integrations.export_aggregator import (
+    aggregate_export,
+    is_robinhood_export,
+)
 from app.utils.logging import get_logger
 from app.utils.exceptions import CSVParseError, BrokerAuthenticationError
 
@@ -18,8 +22,13 @@ logger = get_logger("broker_integrations.csv")
 REQUIRED_POSITION_COLUMNS = {"symbol", "quantity", "average_cost"}
 
 OPTIONAL_POSITION_COLUMNS = {
-    "name", "current_price", "purchase_date",
-    "realized_gains", "unrealized_gains", "asset_type", "sector",
+    "name",
+    "current_price",
+    "purchase_date",
+    "realized_gains",
+    "unrealized_gains",
+    "asset_type",
+    "sector",
 }
 
 REQUIRED_TRANSACTION_COLUMNS = {"symbol", "transaction_type", "quantity", "price"}
@@ -77,22 +86,47 @@ class CSVImportAdapter(BrokerInterface):
 
         logger.info(
             f"CSV import started: {self._filename}",
-            extra={"event": "csv_import_start", "file": self._filename, "type": csv_type},
+            extra={
+                "event": "csv_import_start",
+                "file": self._filename,
+                "type": csv_type,
+            },
         )
 
-        try:
-            df = pd.read_csv(io.StringIO(csv_content))
-            df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
-        except Exception as e:
-            raise CSVParseError(f"Failed to parse CSV file: {e}", details={"filename": self._filename})
+        # Detect Robinhood export from raw header before pandas parsing,
+        # since the export has footer rows with mismatched field counts.
+        first_line = csv_content.strip().split("\n", 1)[0].strip()
+        header_cols = {
+            c.strip().strip('"').strip().lower().replace(" ", "_")
+            for c in first_line.split(",")
+        }
 
-        if df.empty:
-            raise CSVParseError("CSV file is empty", details={"filename": self._filename})
+        logger.info(f"CSV header columns detected: {header_cols}")
 
-        if csv_type == "transactions":
-            self._transactions = self._parse_transactions(df)
+        if is_robinhood_export(header_cols):
+            logger.info(
+                "Detected Robinhood transaction export — running aggregation engine"
+            )
+            self._positions, self._transactions = aggregate_export(csv_content)
         else:
-            self._positions = self._parse_positions(df)
+            try:
+                df = pd.read_csv(io.StringIO(csv_content))
+                df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+            except Exception as e:
+                raise CSVParseError(
+                    f"Failed to parse CSV file: {e}",
+                    details={"filename": self._filename},
+                )
+
+            if df.empty:
+                raise CSVParseError(
+                    "CSV file is empty", details={"filename": self._filename}
+                )
+
+            if csv_type == "transactions":
+                self._transactions = self._parse_transactions(df)
+            else:
+                self._positions = self._parse_positions(df)
 
         self._connected = True
 
@@ -130,7 +164,10 @@ class CSVImportAdapter(BrokerInterface):
         if missing:
             raise CSVParseError(
                 f"CSV missing required columns: {missing}",
-                details={"missing_columns": list(missing), "found_columns": list(df.columns)},
+                details={
+                    "missing_columns": list(missing),
+                    "found_columns": list(df.columns),
+                },
             )
 
         positions = []
@@ -143,23 +180,53 @@ class CSVImportAdapter(BrokerInterface):
                 avg_cost = float(row["average_cost"])
 
                 if quantity <= 0:
-                    errors.append(f"Row {idx + 1}: quantity must be positive for {symbol}")
+                    errors.append(
+                        f"Row {idx + 1}: quantity must be positive for {symbol}"
+                    )
                     continue
                 if avg_cost < 0:
-                    errors.append(f"Row {idx + 1}: average_cost cannot be negative for {symbol}")
+                    errors.append(
+                        f"Row {idx + 1}: average_cost cannot be negative for {symbol}"
+                    )
                     continue
 
-                name = str(row.get("name", symbol)).strip() if pd.notna(row.get("name")) else symbol
-                current_price = float(row.get("current_price", 0)) if pd.notna(row.get("current_price")) else 0.0
-                realized = float(row.get("realized_gains", 0)) if pd.notna(row.get("realized_gains")) else 0.0
-                unrealized = float(row.get("unrealized_gains", 0)) if pd.notna(row.get("unrealized_gains")) else 0.0
-                asset_type = str(row.get("asset_type", "stock")).strip().lower() if pd.notna(row.get("asset_type")) else "stock"
-                sector = str(row.get("sector", "")).strip() if pd.notna(row.get("sector")) else None
+                name = (
+                    str(row.get("name", symbol)).strip()
+                    if pd.notna(row.get("name"))
+                    else symbol
+                )
+                current_price = (
+                    float(row.get("current_price", 0))
+                    if pd.notna(row.get("current_price"))
+                    else 0.0
+                )
+                realized = (
+                    float(row.get("realized_gains", 0))
+                    if pd.notna(row.get("realized_gains"))
+                    else 0.0
+                )
+                unrealized = (
+                    float(row.get("unrealized_gains", 0))
+                    if pd.notna(row.get("unrealized_gains"))
+                    else 0.0
+                )
+                asset_type = (
+                    str(row.get("asset_type", "stock")).strip().lower()
+                    if pd.notna(row.get("asset_type"))
+                    else "stock"
+                )
+                sector = (
+                    str(row.get("sector", "")).strip()
+                    if pd.notna(row.get("sector"))
+                    else None
+                )
 
                 purchase_date = None
                 if pd.notna(row.get("purchase_date")):
                     try:
-                        purchase_date = pd.to_datetime(row["purchase_date"]).to_pydatetime()
+                        purchase_date = pd.to_datetime(
+                            row["purchase_date"]
+                        ).to_pydatetime()
                         if purchase_date.tzinfo is None:
                             purchase_date = purchase_date.replace(tzinfo=timezone.utc)
                     except (ValueError, TypeError):
@@ -168,18 +235,20 @@ class CSVImportAdapter(BrokerInterface):
                 if unrealized == 0 and current_price > 0:
                     unrealized = (current_price - avg_cost) * quantity
 
-                positions.append(PositionData(
-                    symbol=symbol,
-                    name=name,
-                    quantity=quantity,
-                    average_cost=avg_cost,
-                    current_price=current_price,
-                    purchase_date=purchase_date,
-                    realized_gains=realized,
-                    unrealized_gains=unrealized,
-                    asset_type=asset_type,
-                    sector=sector if sector else None,
-                ))
+                positions.append(
+                    PositionData(
+                        symbol=symbol,
+                        name=name,
+                        quantity=quantity,
+                        average_cost=avg_cost,
+                        current_price=current_price,
+                        purchase_date=purchase_date,
+                        realized_gains=realized,
+                        unrealized_gains=unrealized,
+                        asset_type=asset_type,
+                        sector=sector if sector else None,
+                    )
+                )
 
             except (ValueError, TypeError) as e:
                 errors.append(f"Row {idx + 1}: {e}")
@@ -192,7 +261,9 @@ class CSVImportAdapter(BrokerInterface):
             )
 
         if not positions:
-            raise CSVParseError("No valid positions found in CSV", details={"errors": errors[:10]})
+            raise CSVParseError(
+                "No valid positions found in CSV", details={"errors": errors[:10]}
+            )
 
         return positions
 
@@ -221,7 +292,11 @@ class CSVImportAdapter(BrokerInterface):
                 txn_type = str(row["transaction_type"]).strip().lower()
                 quantity = abs(float(row["quantity"]))
                 price = float(row["price"])
-                total = float(row.get("total_amount", quantity * price)) if pd.notna(row.get("total_amount")) else quantity * price
+                total = (
+                    float(row.get("total_amount", quantity * price))
+                    if pd.notna(row.get("total_amount"))
+                    else quantity * price
+                )
                 fees = float(row.get("fees", 0)) if pd.notna(row.get("fees")) else 0.0
 
                 executed_at = datetime.now(timezone.utc)
@@ -233,15 +308,17 @@ class CSVImportAdapter(BrokerInterface):
                     except (ValueError, TypeError):
                         pass
 
-                transactions.append(TransactionData(
-                    symbol=symbol,
-                    transaction_type=txn_type,
-                    quantity=quantity,
-                    price=price,
-                    total_amount=total,
-                    fees=fees,
-                    executed_at=executed_at,
-                ))
+                transactions.append(
+                    TransactionData(
+                        symbol=symbol,
+                        transaction_type=txn_type,
+                        quantity=quantity,
+                        price=price,
+                        total_amount=total,
+                        fees=fees,
+                        executed_at=executed_at,
+                    )
+                )
             except (ValueError, TypeError) as e:
                 logger.warning(f"Skipping malformed CSV transaction row {idx + 1}: {e}")
                 continue
@@ -285,7 +362,9 @@ class CSVImportAdapter(BrokerInterface):
         self._cash_balance = 0.0
         self._connected = False
         self._filename = None
-        logger.info("CSV import data cleared", extra={"event": "disconnected", "broker": "csv"})
+        logger.info(
+            "CSV import data cleared", extra={"event": "disconnected", "broker": "csv"}
+        )
         return True
 
     def is_connected(self) -> bool:
