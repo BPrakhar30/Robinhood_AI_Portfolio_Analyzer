@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const resendMutation = useResendVerification();
   const router = useRouter();
   const [existingEmail, setExistingEmail] = useState<string | null>(null);
+  const [existingVerified, setExistingVerified] = useState(false);
 
   const {
     register,
@@ -43,11 +44,12 @@ export default function RegisterPage() {
 
   const onSubmit = (data: RegisterFormData) => {
     setExistingEmail(null);
+    setExistingVerified(false);
     registerMutation.mutate(data, {
       onError: (error) => {
         if (error instanceof APIError && error.status === 409) {
-          // May be unverified existing account—surface recovery paths.
           setExistingEmail(data.email);
+          setExistingVerified(error.detail?.is_verified === true);
         }
       },
     });
@@ -151,14 +153,28 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {registerMutation.isError && existingEmail && (
+              {registerMutation.isError && existingEmail && existingVerified && (
+                <Alert className="border-amber-500/30 bg-amber-500/5">
+                  <AlertDescription className="text-amber-700 dark:text-amber-400 text-sm space-y-2 text-center">
+                    <p>An account with this email already exists.</p>
+                    <Link
+                      href="/login"
+                      className="underline font-medium text-amber-800 dark:text-amber-300 text-sm cursor-pointer"
+                    >
+                      Log in to your account
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {registerMutation.isError && existingEmail && !existingVerified && (
                 <Alert className="border-amber-500/30 bg-amber-500/5">
                   <AlertDescription className="text-amber-700 dark:text-amber-400 text-sm space-y-2">
-                    <p>An account with this email already exists but may not be verified.</p>
-                    <div className="flex flex-col gap-1">
+                    <p>An account with this email exists but is not yet verified.</p>
+                    <div className="flex flex-row items-center gap-3">
                       <button
                         type="button"
-                        className="underline font-medium text-amber-800 dark:text-amber-300 text-left"
+                        className="underline font-medium text-amber-800 dark:text-amber-300 text-sm cursor-pointer"
                         disabled={resendMutation.isPending}
                         onClick={() => {
                           resendMutation.mutate(existingEmail, {
@@ -174,11 +190,12 @@ export default function RegisterPage() {
                           ? "Sending..."
                           : "Resend verification code"}
                       </button>
+                      <span className="text-amber-400">|</span>
                       <Link
                         href="/login"
-                        className="underline font-medium text-amber-800 dark:text-amber-300 text-sm"
+                        className="underline font-medium text-amber-800 dark:text-amber-300 text-sm cursor-pointer"
                       >
-                        Already verified? Log in
+                        Log in
                       </Link>
                     </div>
                   </AlertDescription>

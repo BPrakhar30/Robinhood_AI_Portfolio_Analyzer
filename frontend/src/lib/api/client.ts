@@ -27,7 +27,8 @@ export class APIError extends Error {
   constructor(
     message: string,
     public status: number,
-    public serverMessage?: string
+    public serverMessage?: string,
+    public detail?: Record<string, unknown>
   ) {
     super(message);
     this.name = "APIError";
@@ -83,10 +84,16 @@ export async function apiClient<T>(
 
     if (!response.ok) {
       let serverMessage = USER_FRIENDLY_ERRORS[response.status] || "An unexpected error occurred.";
+      let detailData: Record<string, unknown> | undefined;
       try {
         const errorBody = await response.json();
         if (errorBody.detail) {
-          serverMessage = errorBody.detail;
+          if (typeof errorBody.detail === "object") {
+            serverMessage = errorBody.detail.message || serverMessage;
+            detailData = errorBody.detail;
+          } else {
+            serverMessage = errorBody.detail;
+          }
         } else if (errorBody.error_message) {
           serverMessage = errorBody.error_message;
         }
@@ -106,7 +113,7 @@ export async function apiClient<T>(
         }
       }
 
-      throw new APIError(serverMessage, response.status, serverMessage);
+      throw new APIError(serverMessage, response.status, serverMessage, detailData);
     }
 
     return await response.json();

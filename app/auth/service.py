@@ -49,10 +49,14 @@ class AuthService:
         existing = await self._session.execute(
             select(User).where(User.email == email)
         )
-        if existing.scalar_one_or_none():
+        existing_user = existing.scalar_one_or_none()
+        if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="An account with this email already exists.",
+                detail={
+                    "message": "An account with this email already exists.",
+                    "is_verified": existing_user.is_email_verified,
+                },
             )
 
         hashed = pwd_context.hash(password)
