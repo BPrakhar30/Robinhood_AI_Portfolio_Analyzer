@@ -6,18 +6,18 @@ An AI-powered portfolio analysis application that connects to your Robinhood bro
 
 - **User Authentication** — Registration, login, email verification (6-digit OTP), and JWT-based sessions. Passwords hashed with bcrypt.
 - **Account Deletion** — Users can permanently delete their account and all associated data from Settings or the topbar menu, with confirmation dialog.
-- **Robinhood Direct Connection** — Two-step MFA flow (SMS, email, TOTP, and push notification) using `robin_stocks` internals. Includes 15-second countdown for push approval, auto-trigger, and inline status feedback.
-- **CSV Import** — Manual fallback: upload a CSV export from any brokerage to import positions.
+- **Robinhood Direct Connection** — Two-step MFA flow (SMS, email, TOTP, and push notification) using `robin_stocks` internals. Includes 30-second countdown for push approval, auto-trigger, and inline status feedback.
+- **CSV Import** — Upload a standard positions CSV or a Robinhood transaction export. Robinhood exports are auto-detected and run through an aggregation engine that computes positions from buy/sell/split/dividend transactions, with live prices from Finnhub.
 - **Plaid Integration (backend only)** — Backend adapter, endpoints, and service layer are complete. Frontend wiring (Plaid Link widget) is planned for a future release.
 - **Dashboard** — Portfolio overview, connected brokers, positions, unrealized gains, and cash balance.
-- **Broker Management** — Connect, sync, and disconnect broker accounts. Encrypted token storage with Fernet.
+- **Broker Management** — Connect, sync, disconnect, or delete broker accounts and data. Encrypted token storage with Fernet.
 - **Settings** — Profile info, system diagnostics, logout, and account deletion (danger zone).
 - **Dockerized Dev Environment** — `docker compose up --build` runs everything with bind mounts for live reloading.
 - **Responsive UI** — Next.js 16, Tailwind CSS, shadcn/ui, dark/light mode, protected routes, sidebar + topbar layout.
 
 ## Tech Stack
 
-- **Backend**: Python, FastAPI, SQLAlchemy (async), Pydantic, JWT, bcrypt, Fernet encryption
+- **Backend**: Python, FastAPI, SQLAlchemy (async), Pydantic, JWT, bcrypt, Fernet encryption, Finnhub API
 - **Frontend**: Next.js 16, React, TypeScript, Tailwind CSS, shadcn/ui, Zustand, TanStack Query
 - **Database**: SQLite (development), PostgreSQL-ready (production)
 - **DevOps**: Docker, Docker Compose
@@ -27,7 +27,7 @@ An AI-powered portfolio analysis application that connects to your Robinhood bro
 ### Option 1: Docker (Recommended)
 
 1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-2. (Optional) Copy `.env.example` to `.env` and configure. Runs with defaults if absent.
+2. (Optional) Copy `.env.example` to `.env` and configure. Runs with defaults (SQLite, development mode) if `.env` is absent.
 3. Build and start:
    ```
    docker compose up --build
