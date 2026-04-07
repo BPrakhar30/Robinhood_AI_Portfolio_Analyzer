@@ -116,7 +116,6 @@ class BrokerService:
             )
             connection.sync_error_message = str(e)
 
-        await adapter.disconnect()
         return connection
 
     async def connect_robinhood_with_tokens(
@@ -144,11 +143,6 @@ class BrokerService:
                 extra={"event": "initial_sync_warning", "broker": "robinhood"},
             )
             connection.sync_error_message = str(e)
-
-        try:
-            await adapter.disconnect()
-        except Exception:
-            pass
 
         return connection
 
@@ -307,13 +301,14 @@ class BrokerService:
         try:
             if connection.broker_type == BrokerType.ROBINHOOD:
                 if not connection.access_token_encrypted:
-                    raise BrokerAuthenticationError("No stored token — reconnection required")
+                    raise BrokerAuthenticationError(
+                        "No stored token. Please disconnect and reconnect your Robinhood account.")
                 token = self._encryptor.decrypt(connection.access_token_encrypted)
-                # Short-lived robin_stocks tokens: force full reconnect instead of silent stale sync
-                raise PortfolioSyncError(
-                    "Robinhood re-sync requires re-authentication (session tokens are short-lived)",
-                    details={"broker": "robinhood"},
-                )
+                try:
+                    adapter.set_access_token(token)
+                except Exception:
+                    raise PortfolioSyncError(
+                        "Robinhood session expired. Please disconnect and reconnect your account.")
 
             elif connection.broker_type == BrokerType.PLAID:
                 if not connection.access_token_encrypted:

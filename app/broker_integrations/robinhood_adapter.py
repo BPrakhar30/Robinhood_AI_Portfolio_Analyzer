@@ -285,17 +285,17 @@ class RobinhoodAdapter(BrokerInterface):
                     return {"_retry": True,
                             "_error": "Invalid verification code. Please try again."}
 
-            # 4b. Push notification → poll until approved
+            # 4b. Push notification → poll until approved (30s window)
             elif challenge_type == "prompt":
                 push_url = _PUSH_URL.format(cid=challenge_id)
                 validated = False
                 t0 = _time.time()
-                while _time.time() - t0 < 60:
+                while _time.time() - t0 < 30:
                     r = _rh_get(url=push_url)
                     if r and r.get("challenge_status") == "validated":
                         validated = True
                         break
-                    _time.sleep(5)
+                    _time.sleep(2)
                 if not validated:
                     return {"_retry": True,
                             "_error": "Push notification was not approved in time. Please try again."}

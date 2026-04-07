@@ -8,17 +8,17 @@
  *
  * Step 2: Depends on the MFA type returned by the backend:
  *   • "sms" / "email" / "app"  → user enters a 6-digit code → calls /complete-mfa
- *   • "prompt" (push notification) → user approves on their Robinhood app,
- *     then clicks Continue → calls /complete-mfa (no code needed)
+ *   • "prompt" (push notification) → auto-triggers /complete-mfa with a 30-second
+ *     countdown while the backend polls Robinhood for approval
  *
- * Updated: 2026-04-06
+ * Updated: 2026-04-07
  */
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  Loader2, Shield, AlertTriangle, ArrowLeft, Smartphone, Bell,
+  Loader2, Shield, AlertTriangle, ArrowLeft, Smartphone, Bell, CheckCircle2,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,8 @@ import {
 } from "@/features/brokers/hooks";
 
 type MFAType = "sms" | "email" | "app" | "prompt";
+
+const PUSH_TIMEOUT_SECONDS = 30;
 
 const credentialsSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -55,12 +57,14 @@ const MFA_MESSAGES: Record<MFAType, string> = {
   sms: "A verification code was sent to your phone via SMS. Enter it below.",
   email: "A verification code was sent to your email. Enter it below.",
   app: "Enter the 6-digit code from your authenticator app (Google Authenticator, Authy, etc.).",
-  prompt: "A push notification was sent to your Robinhood app. Approve the login on your phone, then click Continue below.",
+  prompt: "A push notification was sent to your Robinhood app. Approve the login on your phone.",
 };
 
 export function RobinhoodConnectForm({ onSuccess }: Props) {
-  const [step, setStep] = useState<"credentials" | "mfa">("credentials");
+  const [step, setStep] = useState<"credentials" | "mfa" | "authenticated">("credentials");
   const [mfaType, setMfaType] = useState<MFAType | null>(null);
+  const [countdown, setCountdown] = useState(PUSH_TIMEOUT_SECONDS);
+  const pushTriggered = useRef(false);
 
   const initiateMutation = useInitiateRobinhood();
   const completeMutation = useCompleteRobinhoodMFA();
@@ -75,6 +79,41 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
 
   const needsCodeInput = mfaType !== "prompt";
 
+  const handlePushSuccess = useCallback(() => {
+    setStep("authenticated");
+    setTimeout(() => onSuccess(), 1500);
+  }, [onSuccess]);
+
+  // Auto-trigger complete-mfa for push notifications
+  useEffect(() => {
+    if (step !== "mfa" || mfaType !== "prompt" || pushTriggered.current) return;
+    pushTriggered.current = true;
+
+    completeMutation.mutateAsync({ mfa_code: "" }).then(() => {
+      handlePushSuccess();
+    }).catch(() => {
+      // error shown inline
+    });
+  }, [step, mfaType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Countdown timer for push notifications
+  useEffect(() => {
+    if (step !== "mfa" || mfaType !== "prompt") return;
+
+    setCountdown(PUSH_TIMEOUT_SECONDS);
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [step, mfaType]);
+
   // ── Step 1: send credentials ──
   const onSubmitCredentials = async (data: CredentialsData) => {
     try {
@@ -83,6 +122,7 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
       if (result.status === "authenticated") {
         onSuccess();
       } else if (result.status === "mfa_required") {
+        pushTriggered.current = false;
         setMfaType(result.mfa_type as MFAType);
         setStep("mfa");
       }
@@ -91,12 +131,10 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
     }
   };
 
-  // ── Step 2: send MFA code (or empty for push) ──
-  const onSubmitMFA = async (data?: MFAData) => {
+  // ── Step 2: send MFA code (SMS/email/app only) ──
+  const onSubmitMFA = async (data: MFAData) => {
     try {
-      await completeMutation.mutateAsync({
-        mfa_code: data?.mfa_code ?? "",
-      });
+      await completeMutation.mutateAsync(data);
       onSuccess();
     } catch {
       // shown via completeMutation.isError
@@ -106,10 +144,33 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
   const handleBack = () => {
     setStep("credentials");
     setMfaType(null);
+    pushTriggered.current = false;
     mfaForm.reset();
     initiateMutation.reset();
     completeMutation.reset();
   };
+
+  // ────────── Authenticated via push notification ──────────
+  if (step === "authenticated") {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              Authenticated via push notification
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Syncing your portfolio...
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   // ────────── Step 2: MFA screen ──────────
   if (step === "mfa") {
@@ -185,8 +246,24 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
             </button>
           </form>
         ) : (
-          /* Push notification — no code input, just a Continue button */
+          /* Push notification — auto-triggered with countdown */
           <div className="space-y-4">
+            {/* Countdown progress */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Waiting for approval</span>
+                <span className="tabular-nums font-medium">
+                  {countdown > 0 ? `${countdown}s remaining` : "Time's up"}
+                </span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-1000 ease-linear"
+                  style={{ width: `${(countdown / PUSH_TIMEOUT_SECONDS) * 100}%` }}
+                />
+              </div>
+            </div>
+
             {completeMutation.isError && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -197,25 +274,21 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
               </Alert>
             )}
 
-            <button
-              type="button"
-              className={cn(buttonVariants(), "w-full")}
-              disabled={completeMutation.isPending}
-              onClick={() => onSubmitMFA()}
-            >
-              {completeMutation.isPending && (
+            {!completeMutation.isError && (
+              <button
+                type="button"
+                className={cn(buttonVariants(), "w-full")}
+                disabled
+              >
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {completeMutation.isPending
-                ? "Waiting for approval..."
-                : "Continue"}
-            </button>
+                Waiting for push approval...
+              </button>
+            )}
 
             <button
               type="button"
               className={cn(buttonVariants({ variant: "ghost" }), "w-full gap-2")}
               onClick={handleBack}
-              disabled={completeMutation.isPending}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
