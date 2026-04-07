@@ -20,7 +20,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RobinhoodConnectForm } from "./robinhood-connect";
@@ -40,6 +39,7 @@ function BrokersContent() {
   const searchParams = useSearchParams();
   const initialFlow = searchParams.get("connect") as ConnectFlow;
   const [connectFlow, setConnectFlow] = useState<ConnectFlow>(initialFlow);
+  const [disconnectId, setDisconnectId] = useState<number | null>(null);
 
   const { data: connections, isLoading, error, refetch } = useConnections();
   const disconnectMutation = useDisconnectBroker();
@@ -47,6 +47,7 @@ function BrokersContent() {
 
   const handleDisconnect = async (id: number) => {
     await disconnectMutation.mutateAsync(id);
+    setDisconnectId(null);
   };
 
   const handleSync = async (id: number) => {
@@ -112,32 +113,15 @@ function BrokersContent() {
                       <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
                       Sync
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium rounded-md border border-input bg-background h-8 px-3 text-destructive hover:text-destructive hover:bg-accent cursor-pointer"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Disconnect
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Disconnect this broker?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will remove the connection and clear stored tokens.
-                            Your imported data will remain until you delete it.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => handleDisconnect(conn.id)}
-                          >
-                            Disconnect
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDisconnectId(conn.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      Disconnect
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -176,6 +160,29 @@ function BrokersContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Disconnect confirmation */}
+      <AlertDialog open={disconnectId !== null} onOpenChange={(o) => !o && setDisconnectId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect this broker?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the connection and clear stored tokens.
+              Your imported data will remain until you delete it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disconnectMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => disconnectId && handleDisconnect(disconnectId)}
+              disabled={disconnectMutation.isPending}
+            >
+              Disconnect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Connect flow dialogs */}
       <Dialog open={connectFlow === "robinhood"} onOpenChange={(o) => !o && setConnectFlow(null)}>
