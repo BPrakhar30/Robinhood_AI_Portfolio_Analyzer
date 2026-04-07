@@ -33,16 +33,16 @@ async def send_verification_email(
 ) -> None:
     settings = get_settings()
 
-    # Dev: no SMTP — copy the code from logs. Prod: requires smtp_host below.
+    # Dev: no SMTP — print code directly to stdout so it's impossible to miss.
     if settings.app_env == Environment.DEVELOPMENT:
-        logger.info(
-            "\n" + "=" * 60 + "\n"
-            "  EMAIL VERIFICATION CODE (Dev Mode)\n"
-            f"  To: {email}\n"
-            f"  Name: {full_name or 'N/A'}\n"
-            f"  Code: {code}\n"
-            f"  Expires in: {CODE_EXPIRY_MINUTES} minutes\n" + "=" * 60
-        )
+        border = "=" * 60
+        print(f"\n[backend] {border}")
+        print(f"[backend]   EMAIL VERIFICATION CODE (Dev Mode)")
+        print(f"[backend]   To:      {email}")
+        print(f"[backend]   Name:    {full_name or 'N/A'}")
+        print(f"[backend]   Code:    {code}")
+        print(f"[backend]   Expires: {CODE_EXPIRY_MINUTES} minutes")
+        print(f"[backend] {border}\n", flush=True)
         return
 
     # Non-dev without SMTP: fail soft (log) so signup flow doesn't crash in misconfigured envs.
