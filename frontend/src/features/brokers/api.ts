@@ -66,6 +66,14 @@ export async function connectCSV(data: {
 export async function disconnectBroker(
   connectionId: number
 ): Promise<APIStandardResponse> {
+  return api.post<APIStandardResponse>(
+    `/api/v1/broker/connections/${connectionId}/disconnect`
+  );
+}
+
+export async function deleteConnection(
+  connectionId: number
+): Promise<APIStandardResponse> {
   return api.delete<APIStandardResponse>(
     `/api/v1/broker/connections/${connectionId}`
   );

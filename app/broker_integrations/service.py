@@ -237,6 +237,32 @@ class BrokerService:
         )
         return True
 
+    async def delete_connection(self, user: User, connection_id: int) -> bool:
+        """
+        Permanently delete a broker connection and all associated data
+        (positions, transactions, snapshots) via ORM cascade.
+        """
+        result = await self._session.execute(
+            select(BrokerConnection).where(
+                BrokerConnection.id == connection_id,
+                BrokerConnection.user_id == user.id,
+            )
+        )
+        connection = result.scalar_one_or_none()
+
+        if not connection:
+            raise BrokerConnectionError("Connection not found", details={"connection_id": connection_id})
+
+        broker = connection.broker_type.value
+        await self._session.delete(connection)
+        await self._session.flush()
+
+        logger.info(
+            "Broker connection and data deleted",
+            extra={"event": "broker_deleted", "broker": broker, "user_id": user.id},
+        )
+        return True
+
     async def get_connections(self, user: User) -> list[BrokerConnection]:
         """Get all broker connections for a user."""
         result = await self._session.execute(

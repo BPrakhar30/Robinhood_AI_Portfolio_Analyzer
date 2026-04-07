@@ -247,17 +247,32 @@ async def list_connections(
     ]
 
 
-@router.delete("/connections/{connection_id}", response_model=APIResponse)
+@router.post("/connections/{connection_id}/disconnect", response_model=APIResponse)
 async def disconnect_broker(
     connection_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Disconnect a broker connection and clear stored tokens."""
+    """Disconnect a broker connection and clear stored tokens. Keeps imported data."""
     try:
         service = BrokerService(session)
         await service.disconnect_broker(current_user, connection_id)
         return _api_response(data={"disconnected": True, "connection_id": connection_id})
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.delete("/connections/{connection_id}", response_model=APIResponse)
+async def delete_connection(
+    connection_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Permanently delete a broker connection and all associated data."""
+    try:
+        service = BrokerService(session)
+        await service.delete_connection(current_user, connection_id)
+        return _api_response(data={"deleted": True, "connection_id": connection_id})
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 

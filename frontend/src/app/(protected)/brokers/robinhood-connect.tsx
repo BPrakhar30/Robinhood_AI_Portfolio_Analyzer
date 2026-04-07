@@ -302,20 +302,6 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
   // ────────── Step 1: Credentials screen ──────────
   return (
     <div className="space-y-4">
-      <div className="rounded-lg bg-muted/50 p-3 flex items-start gap-2">
-        <Shield className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p>
-            Your credentials are used only for authentication and are never
-            stored. Session tokens are encrypted at rest.
-          </p>
-          <p>
-            If you have 2FA enabled, you will be prompted for verification in
-            the next step after clicking Connect.
-          </p>
-        </div>
-      </div>
-
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -352,6 +338,17 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
               {credentialsForm.formState.errors.password.message}
             </p>
           )}
+        </div>
+
+        <div className="rounded-lg bg-muted/50 p-3 flex items-start gap-2">
+          <Shield className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>
+              Your credentials are used only for authentication and are never
+              stored. Session tokens are encrypted at rest. If you have 2FA enabled, you will be prompted for verification in
+              the next step.
+            </p>
+          </div>
         </div>
 
         {initiateMutation.isError && (

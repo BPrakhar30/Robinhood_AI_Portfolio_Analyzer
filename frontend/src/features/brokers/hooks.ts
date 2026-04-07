@@ -16,6 +16,7 @@ import {
   completeRobinhoodMFA,
   connectCSV,
   disconnectBroker,
+  deleteConnection,
   syncConnection,
   fetchPositions,
   fetchTransactions,
@@ -109,6 +110,16 @@ export function useDisconnectBroker() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: disconnectBroker,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broker"] });
+    },
+  });
+}
+
+export function useDeleteConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteConnection,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["broker"] });
     },
