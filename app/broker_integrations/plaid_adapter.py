@@ -16,9 +16,13 @@ from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
-from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from plaid.model.item_public_token_exchange_request import (
+    ItemPublicTokenExchangeRequest,
+)
 from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetRequest
-from plaid.model.investments_transactions_get_request import InvestmentsTransactionsGetRequest
+from plaid.model.investments_transactions_get_request import (
+    InvestmentsTransactionsGetRequest,
+)
 from plaid.model.accounts_get_request import AccountsGetRequest
 
 from app.broker_integrations.base import (
@@ -65,7 +69,9 @@ class PlaidAdapter(BrokerInterface):
     def _init_client(self):
         settings = get_settings()
         if not settings.plaid_client_id or not settings.plaid_secret:
-            logger.warning("Plaid credentials not configured — adapter will not work until configured")
+            logger.warning(
+                "Plaid credentials not configured — adapter will not work until configured"
+            )
             return
 
         env = PLAID_ENV_MAP.get(settings.plaid_env, plaid.Environment.Sandbox)
@@ -93,7 +99,9 @@ class PlaidAdapter(BrokerInterface):
             BrokerConnectionError: If Link token creation fails
         """
         if not self._client:
-            raise BrokerConnectionError("Plaid client not initialized — check credentials")
+            raise BrokerConnectionError(
+                "Plaid client not initialized — check credentials"
+            )
 
         try:
             request = LinkTokenCreateRequest(
@@ -104,10 +112,16 @@ class PlaidAdapter(BrokerInterface):
                 user=LinkTokenCreateRequestUser(client_user_id=str(user_id)),
             )
             response = self._client.link_token_create(request)
-            logger.info("Plaid Link token created", extra={"event": "link_token_created", "broker": "plaid"})
+            logger.info(
+                "Plaid Link token created",
+                extra={"event": "link_token_created", "broker": "plaid"},
+            )
             return response.link_token
         except Exception as e:
-            logger.error(f"Failed to create Plaid Link token: {e}", extra={"event": "link_token_error"})
+            logger.error(
+                f"Failed to create Plaid Link token: {e}",
+                extra={"event": "link_token_error"},
+            )
             raise BrokerConnectionError(f"Failed to create Plaid Link token: {e}")
 
     async def authenticate(self, credentials: dict) -> dict:
@@ -124,7 +138,9 @@ class PlaidAdapter(BrokerInterface):
             BrokerAuthenticationError: If token exchange fails
         """
         if not self._client:
-            raise BrokerConnectionError("Plaid client not initialized — check credentials")
+            raise BrokerConnectionError(
+                "Plaid client not initialized — check credentials"
+            )
 
         public_token = credentials.get("public_token")
         if not public_token:
@@ -140,7 +156,10 @@ class PlaidAdapter(BrokerInterface):
             self._access_token = response.access_token
             self._connected = True
 
-            logger.info("Plaid authentication successful", extra={"event": "auth_success", "broker": "plaid"})
+            logger.info(
+                "Plaid authentication successful",
+                extra={"event": "auth_success", "broker": "plaid"},
+            )
 
             return {
                 "status": "connected",
@@ -150,7 +169,10 @@ class PlaidAdapter(BrokerInterface):
             }
 
         except plaid.ApiException as e:
-            logger.error(f"Plaid authentication error: {e}", extra={"event": "auth_error", "broker": "plaid"})
+            logger.error(
+                f"Plaid authentication error: {e}",
+                extra={"event": "auth_error", "broker": "plaid"},
+            )
             raise BrokerAuthenticationError(
                 f"Plaid token exchange failed: {e.body}",
                 details={"broker": "plaid"},
@@ -206,23 +228,29 @@ class PlaidAdapter(BrokerInterface):
                     elif sec_type == "mutual fund":
                         asset_type = "mutual_fund"
 
-                    positions.append(PositionData(
-                        symbol=symbol,
-                        name=security.name or symbol,
-                        quantity=quantity,
-                        average_cost=avg_cost,
-                        current_price=current_price,
-                        unrealized_gains=unrealized,
-                        asset_type=asset_type,
-                        sector=getattr(security, "sector", None),
-                    ))
+                    positions.append(
+                        PositionData(
+                            symbol=symbol,
+                            name=security.name or symbol,
+                            quantity=quantity,
+                            average_cost=avg_cost,
+                            current_price=current_price,
+                            unrealized_gains=unrealized,
+                            asset_type=asset_type,
+                            sector=getattr(security, "sector", None),
+                        )
+                    )
                 except (ValueError, AttributeError) as e:
                     logger.warning(f"Skipping malformed Plaid holding: {e}")
                     continue
 
             logger.info(
                 f"Retrieved {len(positions)} positions from Plaid",
-                extra={"event": "positions_fetched", "broker": "plaid", "count": len(positions)},
+                extra={
+                    "event": "positions_fetched",
+                    "broker": "plaid",
+                    "count": len(positions),
+                },
             )
 
         except plaid.ApiException as e:
@@ -279,22 +307,30 @@ class PlaidAdapter(BrokerInterface):
                     price = float(txn.price or 0)
                     total = abs(float(txn.amount or 0))
 
-                    transactions.append(TransactionData(
-                        symbol=symbol,
-                        transaction_type=txn_type,
-                        quantity=quantity,
-                        price=price,
-                        total_amount=total,
-                        fees=float(txn.fees or 0),
-                        executed_at=datetime.combine(txn.date, datetime.min.time()).replace(tzinfo=timezone.utc),
-                    ))
+                    transactions.append(
+                        TransactionData(
+                            symbol=symbol,
+                            transaction_type=txn_type,
+                            quantity=quantity,
+                            price=price,
+                            total_amount=total,
+                            fees=float(txn.fees or 0),
+                            executed_at=datetime.combine(
+                                txn.date, datetime.min.time()
+                            ).replace(tzinfo=timezone.utc),
+                        )
+                    )
                 except (ValueError, AttributeError) as e:
                     logger.warning(f"Skipping malformed Plaid transaction: {e}")
                     continue
 
             logger.info(
                 f"Retrieved {len(transactions)} transactions from Plaid",
-                extra={"event": "transactions_fetched", "broker": "plaid", "count": len(transactions)},
+                extra={
+                    "event": "transactions_fetched",
+                    "broker": "plaid",
+                    "count": len(transactions),
+                },
             )
 
         except plaid.ApiException as e:
@@ -327,7 +363,10 @@ class PlaidAdapter(BrokerInterface):
                     balances = account.balances
                     cash_total += float(balances.available or balances.current or 0)
 
-            logger.info("Retrieved cash balance from Plaid", extra={"event": "cash_fetched", "broker": "plaid"})
+            logger.info(
+                "Retrieved cash balance from Plaid",
+                extra={"event": "cash_fetched", "broker": "plaid"},
+            )
             return cash_total
 
         except plaid.ApiException as e:
@@ -369,7 +408,10 @@ class PlaidAdapter(BrokerInterface):
         """Clear the Plaid access token (item removal would require separate API call)."""
         self._access_token = None
         self._connected = False
-        logger.info("Disconnected from Plaid", extra={"event": "disconnected", "broker": "plaid"})
+        logger.info(
+            "Disconnected from Plaid",
+            extra={"event": "disconnected", "broker": "plaid"},
+        )
         return True
 
     def is_connected(self) -> bool:

@@ -78,10 +78,18 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # cascade="all, delete-orphan": deleting a user removes dependent rows (GDPR-style cleanup path).
-    broker_connections = relationship("BrokerConnection", back_populates="user", cascade="all, delete-orphan")
-    positions = relationship("Position", back_populates="user", cascade="all, delete-orphan")
-    transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
-    portfolio_snapshots = relationship("PortfolioSnapshot", back_populates="user", cascade="all, delete-orphan")
+    broker_connections = relationship(
+        "BrokerConnection", back_populates="user", cascade="all, delete-orphan"
+    )
+    positions = relationship(
+        "Position", back_populates="user", cascade="all, delete-orphan"
+    )
+    transactions = relationship(
+        "Transaction", back_populates="user", cascade="all, delete-orphan"
+    )
+    portfolio_snapshots = relationship(
+        "PortfolioSnapshot", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class BrokerConnection(Base):
@@ -92,7 +100,9 @@ class BrokerConnection(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     broker_type = Column(Enum(BrokerType), nullable=False)
     status = Column(Enum(ConnectionStatus), default=ConnectionStatus.PENDING)
     access_token_encrypted = Column(Text, nullable=True)
@@ -106,17 +116,29 @@ class BrokerConnection(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     user = relationship("User", back_populates="broker_connections")
-    positions = relationship("Position", back_populates="broker_connection", cascade="all, delete-orphan")
-    transactions = relationship("Transaction", back_populates="broker_connection", cascade="all, delete-orphan")
-    portfolio_snapshots = relationship("PortfolioSnapshot", back_populates="broker_connection", cascade="all, delete-orphan")
+    positions = relationship(
+        "Position", back_populates="broker_connection", cascade="all, delete-orphan"
+    )
+    transactions = relationship(
+        "Transaction", back_populates="broker_connection", cascade="all, delete-orphan"
+    )
+    portfolio_snapshots = relationship(
+        "PortfolioSnapshot",
+        back_populates="broker_connection",
+        cascade="all, delete-orphan",
+    )
 
 
 class Position(Base):
     __tablename__ = "positions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    broker_connection_id = Column(Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    broker_connection_id = Column(
+        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
+    )
     symbol = Column(String(20), nullable=False, index=True)
     name = Column(String(255), nullable=True)
     quantity = Column(Float, nullable=False)
@@ -128,6 +150,7 @@ class Position(Base):
     asset_type = Column(Enum(AssetType), default=AssetType.STOCK)
     sector = Column(String(100), nullable=True)
     currency = Column(String(10), default="USD")
+    total_amount_invested = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -139,8 +162,12 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    broker_connection_id = Column(Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    broker_connection_id = Column(
+        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
+    )
     symbol = Column(String(20), nullable=False, index=True)
     transaction_type = Column(Enum(TransactionType), nullable=False)
     quantity = Column(Float, nullable=False)
@@ -158,8 +185,12 @@ class PortfolioSnapshot(Base):
     __tablename__ = "portfolio_snapshots"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    broker_connection_id = Column(Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    broker_connection_id = Column(
+        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
+    )
     total_value = Column(Float, nullable=False)
     cash_balance = Column(Float, default=0.0)
     positions_data = Column(JSON, nullable=False)
@@ -167,4 +198,6 @@ class PortfolioSnapshot(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     user = relationship("User", back_populates="portfolio_snapshots")
-    broker_connection = relationship("BrokerConnection", back_populates="portfolio_snapshots")
+    broker_connection = relationship(
+        "BrokerConnection", back_populates="portfolio_snapshots"
+    )

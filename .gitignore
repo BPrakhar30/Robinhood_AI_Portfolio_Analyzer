@@ -58,3 +58,6 @@ service-account.json
 
 # Docker
 docker-compose.override.yml
+
+# Local Testing
+testing/

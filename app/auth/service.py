@@ -51,9 +51,7 @@ class AuthService:
     async def register(
         self, email: str, password: str, full_name: Optional[str] = None
     ) -> dict:
-        existing = await self._session.execute(
-            select(User).where(User.email == email)
-        )
+        existing = await self._session.execute(select(User).where(User.email == email))
         existing_user = existing.scalar_one_or_none()
         if existing_user:
             raise HTTPException(
@@ -93,9 +91,7 @@ class AuthService:
         }
 
     async def verify_email(self, email: str, code: str) -> User:
-        result = await self._session.execute(
-            select(User).where(User.email == email)
-        )
+        result = await self._session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
 
         if not user:
@@ -133,18 +129,20 @@ class AuthService:
         user.email_verification_expires_at = None
         await self._session.flush()
 
-        logger.info("Email verified", extra={"event": "email_verified", "user_id": user.id})
+        logger.info(
+            "Email verified", extra={"event": "email_verified", "user_id": user.id}
+        )
         return user
 
     async def resend_verification(self, email: str) -> dict:
         # Same outward message for missing vs present email to avoid email enumeration.
-        result = await self._session.execute(
-            select(User).where(User.email == email)
-        )
+        result = await self._session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
 
         if not user:
-            return {"message": "If an account with that email exists, a new code has been sent."}
+            return {
+                "message": "If an account with that email exists, a new code has been sent."
+            }
 
         if user.is_email_verified:
             return {"message": "Email is already verified. You can log in."}
@@ -156,17 +154,22 @@ class AuthService:
 
         await send_verification_email(email, code, user.full_name)
 
-        logger.info("Verification code resent", extra={"event": "verification_resent", "user_id": user.id})
-        return {"message": "If an account with that email exists, a new code has been sent."}
+        logger.info(
+            "Verification code resent",
+            extra={"event": "verification_resent", "user_id": user.id},
+        )
+        return {
+            "message": "If an account with that email exists, a new code has been sent."
+        }
 
     async def login(self, email: str, password: str) -> dict:
-        result = await self._session.execute(
-            select(User).where(User.email == email)
-        )
+        result = await self._session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
 
         if not user or not _verify_password(password, user.hashed_password):
-            logger.warning("Failed login attempt", extra={"event": "login_failed", "email": email})
+            logger.warning(
+                "Failed login attempt", extra={"event": "login_failed", "email": email}
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password",
@@ -189,7 +192,9 @@ class AuthService:
         token = self._create_access_token(user_id=user.id)
         expires_in = self._settings.jwt_access_token_expire_minutes * 60
 
-        logger.info("User logged in", extra={"event": "login_success", "user_id": user.id})
+        logger.info(
+            "User logged in", extra={"event": "login_success", "user_id": user.id}
+        )
 
         return {
             "access_token": token,

@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description="AI Portfolio Copilot for Robinhood users — "
-                "securely connects accounts, analyzes portfolios, and provides AI-driven insights.",
+    "securely connects accounts, analyzes portfolios, and provides AI-driven insights.",
     version="0.1.0",
     lifespan=lifespan,
     # /docs and /redoc off in production to reduce exposed surface.
@@ -67,7 +67,11 @@ async def app_exception_handler(request: Request, exc: AppException):
     """Global handler that wraps AppException subclasses into standard API responses."""
     logger.error(
         f"AppException: {exc.message}",
-        extra={"event": "app_error", "status_code": exc.status_code, "details": exc.details},
+        extra={
+            "event": "app_error",
+            "status_code": exc.status_code,
+            "details": exc.details,
+        },
     )
     return JSONResponse(
         status_code=exc.status_code,
@@ -83,7 +87,10 @@ async def app_exception_handler(request: Request, exc: AppException):
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     """Catch-all handler — never return raw exceptions to frontend."""
-    logger.error(f"Unhandled exception: {exc}", extra={"event": "unhandled_error", "error": str(exc)})
+    logger.error(
+        f"Unhandled exception: {exc}",
+        extra={"event": "unhandled_error", "error": str(exc)},
+    )
     return JSONResponse(
         status_code=500,
         content={
@@ -121,10 +128,9 @@ async def status_check():
     db_healthy = True
     try:
         from app.database.engine import async_engine
+
         async with async_engine.connect() as conn:
-            await conn.execute(
-                __import__("sqlalchemy").text("SELECT 1")
-            )
+            await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
     except Exception:
         db_healthy = False
 

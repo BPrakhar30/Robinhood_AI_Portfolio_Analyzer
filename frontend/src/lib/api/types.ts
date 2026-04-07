@@ -49,6 +49,7 @@ export interface PositionResponse {
   asset_type: string;
   sector: string | null;
   currency: string;
+  total_amount_invested: number;
   market_value: number;
   weight_percent: number;
 }

@@ -41,8 +41,7 @@ async def send_verification_email(
             f"  To: {email}\n"
             f"  Name: {full_name or 'N/A'}\n"
             f"  Code: {code}\n"
-            f"  Expires in: {CODE_EXPIRY_MINUTES} minutes\n"
-            + "=" * 60
+            f"  Expires in: {CODE_EXPIRY_MINUTES} minutes\n" + "=" * 60
         )
         return
 

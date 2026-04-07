@@ -371,8 +371,10 @@ class RobinhoodAdapter(BrokerInterface):
                 "Username and password are required",
                 details={"broker": "robinhood"})
 
-        logger.info("Robinhood authentication started",
-                     extra={"event": "auth_start", "broker": "robinhood"})
+        logger.info(
+            "Robinhood authentication started",
+            extra={"event": "auth_start", "broker": "robinhood"},
+        )
 
         try:
             login_kwargs = {
@@ -409,6 +411,10 @@ class RobinhoodAdapter(BrokerInterface):
             }
 
         except asyncio.TimeoutError:
+            logger.error(
+                "Robinhood authentication timed out",
+                extra={"event": "auth_timeout", "broker": "robinhood"},
+            )
             raise BrokerTimeoutError(
                 "Robinhood authentication timed out",
                 details={"broker": "robinhood", "timeout_seconds": TIMEOUT_SECONDS})
@@ -449,30 +455,45 @@ class RobinhoodAdapter(BrokerInterface):
                         current_price = float(data.get("price", 0))
                         equity = float(data.get("equity", 0))
                         unrealized = equity - (avg_cost * quantity)
-                        positions.append(PositionData(
-                            symbol=symbol,
-                            name=data.get("name", symbol),
-                            quantity=quantity,
-                            average_cost=avg_cost,
-                            current_price=current_price,
-                            unrealized_gains=unrealized,
-                            asset_type=data.get("type", "stock"),
-                            sector=data.get("sector"),
-                        ))
+
+                        positions.append(
+                            PositionData(
+                                symbol=symbol,
+                                name=data.get("name", symbol),
+                                quantity=quantity,
+                                average_cost=avg_cost,
+                                current_price=current_price,
+                                unrealized_gains=unrealized,
+                                asset_type=data.get("type", "stock"),
+                                sector=data.get("sector"),
+                            )
+                        )
                     except (ValueError, KeyError) as e:
                         logger.warning(f"Skipping malformed position for {symbol}: {e}")
                         continue
 
-            logger.info(f"Retrieved {len(positions)} positions from Robinhood",
-                        extra={"event": "positions_fetched", "broker": "robinhood",
-                               "count": len(positions)})
+            logger.info(
+                f"Retrieved {len(positions)} positions from Robinhood",
+                extra={
+                    "event": "positions_fetched",
+                    "broker": "robinhood",
+                    "count": len(positions),
+                },
+            )
 
         except asyncio.TimeoutError:
+            logger.error(
+                "Robinhood positions fetch timed out",
+                extra={"event": "positions_timeout"},
+            )
             raise BrokerTimeoutError("Timed out fetching positions from Robinhood")
         except (BrokerTimeoutError, BrokerConnectionError):
             raise
         except Exception as e:
-            logger.error(f"Failed to fetch positions: {e}")
+            logger.error(
+                f"Failed to fetch positions: {e}",
+                extra={"event": "positions_error", "error": str(e)},
+            )
             raise BrokerConnectionError(f"Failed to fetch Robinhood positions: {e}")
 
         try:
@@ -488,17 +509,22 @@ class RobinhoodAdapter(BrokerInterface):
                         if quantity <= 0:
                             continue
                         cost_bases = crypto.get("cost_bases", [{}])
-                        avg_cost = (float(cost_bases[0].get("direct_cost_basis", 0))
-                                    / quantity if quantity else 0)
+                        avg_cost = (
+                            float(cost_bases[0].get("direct_cost_basis", 0)) / quantity
+                            if quantity
+                            else 0
+                        )
                         symbol = crypto.get("currency", {}).get("code", "UNKNOWN")
-                        positions.append(PositionData(
-                            symbol=symbol,
-                            name=crypto.get("currency", {}).get("name", symbol),
-                            quantity=quantity,
-                            average_cost=avg_cost,
-                            current_price=0.0,
-                            asset_type="crypto",
-                        ))
+                        positions.append(
+                            PositionData(
+                                symbol=symbol,
+                                name=crypto.get("currency", {}).get("name", symbol),
+                                quantity=quantity,
+                                average_cost=avg_cost,
+                                current_price=0.0,
+                                asset_type="crypto",
+                            )
+                        )
                     except (ValueError, KeyError, ZeroDivisionError) as e:
                         logger.warning(f"Skipping malformed crypto position: {e}")
                         continue
@@ -529,35 +555,54 @@ class RobinhoodAdapter(BrokerInterface):
                         instrument_url = order.get("instrument", "")
                         instrument_data = await asyncio.get_event_loop().run_in_executor(
                             None,
-                            lambda url=instrument_url: rh.stocks.get_instrument_by_url(url),
+                            lambda url=instrument_url: rh.stocks.get_instrument_by_url(
+                                url
+                            ),
                         )
-                        symbol = (instrument_data.get("symbol", "UNKNOWN")
-                                  if instrument_data else "UNKNOWN")
+                        symbol = (
+                            instrument_data.get("symbol", "UNKNOWN")
+                            if instrument_data
+                            else "UNKNOWN"
+                        )
                     side = order.get("side", "buy")
                     quantity = float(order.get("quantity", 0))
                     avg_price = float(order.get("average_price", 0) or 0)
                     total = quantity * avg_price
                     fees = float(order.get("fees", 0) or 0)
-                    executed_at_str = (order.get("last_transaction_at")
-                                       or order.get("updated_at", ""))
+
+                    executed_at_str = order.get("last_transaction_at") or order.get(
+                        "updated_at", ""
+                    )
                     try:
                         executed_at = datetime.fromisoformat(
-                            executed_at_str.replace("Z", "+00:00"))
+                            executed_at_str.replace("Z", "+00:00")
+                        )
                     except (ValueError, AttributeError):
                         executed_at = datetime.now(timezone.utc)
-                    transactions.append(TransactionData(
-                        symbol=symbol, transaction_type=side, quantity=quantity,
-                        price=avg_price, total_amount=total, fees=fees,
-                        executed_at=executed_at,
-                    ))
+
+                    transactions.append(
+                        TransactionData(
+                            symbol=symbol,
+                            transaction_type=side,
+                            quantity=quantity,
+                            price=avg_price,
+                            total_amount=total,
+                            fees=fees,
+                            executed_at=executed_at,
+                        )
+                    )
                 except (ValueError, KeyError) as e:
                     logger.warning(f"Skipping malformed order: {e}")
                     continue
 
             logger.info(
                 f"Retrieved {len(transactions)} transactions from Robinhood",
-                extra={"event": "transactions_fetched", "broker": "robinhood",
-                       "count": len(transactions)})
+                extra={
+                    "event": "transactions_fetched",
+                    "broker": "robinhood",
+                    "count": len(transactions),
+                },
+            )
 
         except asyncio.TimeoutError:
             raise BrokerTimeoutError(
@@ -565,8 +610,11 @@ class RobinhoodAdapter(BrokerInterface):
         except (BrokerTimeoutError, BrokerConnectionError):
             raise
         except Exception as e:
-            raise BrokerConnectionError(
-                f"Failed to fetch Robinhood transactions: {e}")
+            logger.error(
+                f"Failed to fetch transactions: {e}",
+                extra={"event": "transactions_error"},
+            )
+            raise BrokerConnectionError(f"Failed to fetch Robinhood transactions: {e}")
 
         return transactions
 
@@ -580,7 +628,14 @@ class RobinhoodAdapter(BrokerInterface):
             )
             if not profile:
                 raise BrokerConnectionError("Empty account profile returned")
-            return float(profile.get("cash", 0) or 0)
+
+            cash = float(profile.get("cash", 0) or 0)
+            logger.info(
+                f"Retrieved cash balance from Robinhood",
+                extra={"event": "cash_fetched", "broker": "robinhood"},
+            )
+            return cash
+
         except asyncio.TimeoutError:
             raise BrokerTimeoutError("Timed out fetching cash balance")
         except (BrokerTimeoutError, BrokerConnectionError):
@@ -603,8 +658,9 @@ class RobinhoodAdapter(BrokerInterface):
                     None, lambda: rh.profiles.load_account_profile()),
                 timeout=TIMEOUT_SECONDS,
             )
-            buying_power = (float(profile.get("buying_power", 0) or 0)
-                            if profile else cash)
+            buying_power = (
+                float(profile.get("buying_power", 0) or 0) if profile else cash
+            )
             return AccountSummary(
                 total_value=total_value, cash_balance=cash,
                 positions_count=len(positions), buying_power=buying_power,
@@ -614,15 +670,20 @@ class RobinhoodAdapter(BrokerInterface):
         except (BrokerTimeoutError, BrokerConnectionError):
             raise
         except Exception as e:
+            logger.error(f"Failed to build account summary: {e}")
             raise BrokerConnectionError(
-                f"Failed to build Robinhood account summary: {e}")
+                f"Failed to build Robinhood account summary: {e}"
+            )
 
     async def disconnect(self) -> bool:
         try:
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: rh.logout())
+            await asyncio.get_event_loop().run_in_executor(None, lambda: rh.logout())
             self._connected = False
             self._username = None
+            logger.info(
+                "Disconnected from Robinhood",
+                extra={"event": "disconnected", "broker": "robinhood"},
+            )
             return True
         except Exception as e:
             logger.error(f"Error during Robinhood disconnect: {e}")

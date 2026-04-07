@@ -23,11 +23,13 @@ _engine_kwargs: dict = {
 
 # SQLite doesn't support pool_size/max_overflow
 if not settings.database_url.startswith("sqlite"):
-    _engine_kwargs.update({
-        "pool_size": 10,
-        "max_overflow": 20,
-        "pool_pre_ping": True,
-    })
+    _engine_kwargs.update(
+        {
+            "pool_size": 10,
+            "max_overflow": 20,
+            "pool_pre_ping": True,
+        }
+    )
 
 async_engine = create_async_engine(settings.database_url, **_engine_kwargs)
 

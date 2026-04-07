@@ -21,7 +21,7 @@ import { CurrencyText } from "@/components/portfolio/currency-text";
 import { GainLossBadge } from "@/components/portfolio/gain-loss-badge";
 import { Badge } from "@/components/ui/badge";
 
-type SortKey = "symbol" | "market_value" | "unrealized_gains" | "weight_percent" | "quantity";
+type SortKey = "symbol" | "market_value" | "unrealized_gains" | "weight_percent" | "quantity" | "total_amount_invested";
 type SortDir = "asc" | "desc";
 
 export default function PositionsPage() {
@@ -129,6 +129,9 @@ export default function PositionsPage() {
                       <TableHead className="text-right">Avg Cost</TableHead>
                       <TableHead className="text-right">Current Price</TableHead>
                       <TableHead className="text-right">
+                        <SortButton label="Invested" field="total_amount_invested" />
+                      </TableHead>
+                      <TableHead className="text-right">
                         <SortButton label="Market Value" field="market_value" />
                       </TableHead>
                       <TableHead className="text-right">
@@ -159,6 +162,9 @@ export default function PositionsPage() {
                           <CurrencyText value={pos.current_price} className="text-sm" />
                         </TableCell>
                         <TableCell className="text-right">
+                          <CurrencyText value={pos.total_amount_invested} className="text-sm" />
+                        </TableCell>
+                        <TableCell className="text-right">
                           <CurrencyText value={pos.market_value} className="text-sm font-semibold" />
                         </TableCell>
                         <TableCell className="text-right">
@@ -176,7 +182,7 @@ export default function PositionsPage() {
                     ))}
                     {filtered.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                           No positions match &ldquo;{search}&rdquo;
                         </TableCell>
                       </TableRow>
