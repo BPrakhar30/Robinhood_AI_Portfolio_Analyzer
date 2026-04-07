@@ -151,11 +151,11 @@ function BrokersContent() {
               <p className="text-sm font-medium">Multiple import options available</p>
               <p className="text-xs text-muted-foreground mt-1">
                 Robinhood unavailable? Use{" "}
-                <button onClick={() => setConnectFlow("plaid")} className="underline hover:text-foreground">
+                <button onClick={() => setConnectFlow("plaid")} className="underline hover:text-foreground cursor-pointer">
                   Plaid
                 </button>{" "}
                 for automatic account linking, or{" "}
-                <button onClick={() => setConnectFlow("csv")} className="underline hover:text-foreground">
+                <button onClick={() => setConnectFlow("csv")} className="underline hover:text-foreground cursor-pointer">
                   import a CSV
                 </button>{" "}
                 file as a fallback. All tokens are encrypted at rest.
@@ -298,11 +298,13 @@ function BrokersContent() {
       </Dialog>
 
       <Dialog open={connectFlow === "csv"} onOpenChange={(o) => !o && setConnectFlow(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-lg min-w-0">
+          <DialogHeader className="min-w-0">
             <DialogTitle>Import from CSV</DialogTitle>
           </DialogHeader>
-          <CSVImportForm onSuccess={() => setConnectFlow(null)} />
+          <div className="min-w-0 overflow-x-hidden">
+            <CSVImportForm onSuccess={() => setConnectFlow(null)} />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

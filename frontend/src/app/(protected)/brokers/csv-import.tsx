@@ -5,12 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Upload, Download, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
 import { useConnectCSV, useCSVTemplate } from "@/features/brokers/hooks";
 
 interface FormData {
@@ -31,7 +28,6 @@ interface Props {
 export function CSVImportForm({ onSuccess }: Props) {
   const [csvContent, setCSVContent] = useState("");
   const [fileName, setFileName] = useState("");
-  const [preview, setPreview] = useState<string[]>([]);
   const [fileError, setFileError] = useState("");
 
   const connectMutation = useConnectCSV();
@@ -61,9 +57,6 @@ export function CSVImportForm({ onSuccess }: Props) {
     reader.onload = (event) => {
       const text = event.target?.result as string;
       setCSVContent(text);
-
-      const lines = text.trim().split("\n");
-      setPreview(lines.slice(0, 4));
     };
     reader.readAsText(file);
   }, []);
@@ -99,7 +92,7 @@ export function CSVImportForm({ onSuccess }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       {/* Step 1: Download template */}
       <div className="space-y-2">
         <p className="text-sm font-medium">Step 1: Download template</p>
@@ -122,13 +115,15 @@ export function CSVImportForm({ onSuccess }: Props) {
         <p className="text-sm font-medium">Step 2: Upload your file</p>
         <label
           htmlFor="csv-upload"
-          className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+          className="flex flex-col items-center justify-center w-full min-w-0 h-28 px-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors box-border"
         >
           {fileName ? (
-            <div className="flex items-center gap-2 text-sm">
-              <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
-              <span className="font-medium">{fileName}</span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <div className="flex items-center gap-2 w-full min-w-0 max-w-full text-sm">
+              <FileSpreadsheet className="h-5 w-5 shrink-0 text-emerald-600" />
+              <span className="font-medium truncate min-w-0 text-center" title={fileName}>
+                {fileName}
+              </span>
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1 text-muted-foreground">
@@ -147,36 +142,19 @@ export function CSVImportForm({ onSuccess }: Props) {
         </label>
       </div>
 
-      {/* Preview */}
-      {preview.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Preview</p>
-          <div className="bg-muted rounded-lg p-3 overflow-x-auto">
-            <pre className="text-xs font-mono whitespace-pre">
-              {preview.map((line, i) => (
-                <div key={i} className={i === 0 ? "font-semibold text-foreground" : "text-muted-foreground"}>
-                  {line}
-                </div>
-              ))}
-              {preview.length < csvContent.trim().split("\n").length && (
-                <div className="text-muted-foreground/50 mt-1">
-                  ... {csvContent.trim().split("\n").length - preview.length} more rows
-                </div>
-              )}
-            </pre>
-          </div>
-        </div>
-      )}
-
       {/* Step 3: Cash balance + import */}
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }} className="space-y-4">
-        <div className="space-y-2">
+      <form
+        onSubmit={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
+        className="space-y-4 min-w-0"
+      >
+        <div className="space-y-2 min-w-0">
           <Label htmlFor="cash_balance">Cash Balance (optional)</Label>
           <Input
             id="cash_balance"
             type="number"
             step="0.01"
             placeholder="0.00"
+            className="w-full min-w-0"
             {...register("cash_balance")}
           />
           {errors.cash_balance && (
@@ -198,10 +176,14 @@ export function CSVImportForm({ onSuccess }: Props) {
           </Alert>
         )}
 
-        <button type="submit" className={cn(buttonVariants(), "w-full")} disabled={!csvContent || connectMutation.isPending}>
+        <Button
+          type="submit"
+          className="w-full min-w-0 shrink-0"
+          disabled={!csvContent || connectMutation.isPending}
+        >
           {connectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Import Portfolio
-        </button>
+        </Button>
       </form>
     </div>
   );
