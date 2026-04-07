@@ -12,8 +12,8 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +29,12 @@ from app.utils.logging import get_logger
 
 logger = get_logger("auth")
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def _verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
@@ -59,7 +64,7 @@ class AuthService:
                 },
             )
 
-        hashed = pwd_context.hash(password)
+        hashed = _hash_password(password)
         code = generate_verification_code()
 
         user = User(
@@ -160,7 +165,7 @@ class AuthService:
         )
         user = result.scalar_one_or_none()
 
-        if not user or not pwd_context.verify(password, user.hashed_password):
+        if not user or not _verify_password(password, user.hashed_password):
             logger.warning("Failed login attempt", extra={"event": "login_failed", "email": email})
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

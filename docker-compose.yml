@@ -1,0 +1,55 @@
+# Docker Compose for local development
+#
+# Usage:
+#   docker compose up --build        (first run or after dependency changes)
+#   docker compose up                (subsequent runs)
+#   docker compose down              (stop and remove containers)
+#
+# Bind mounts keep source code in sync between host and container so edits
+# are reflected immediately via uvicorn --reload and Next.js hot-reload.
+# No image rebuild needed for code-only changes.
+#
+# Added: 2026-04-03
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: robinhood-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/workspace/app
+      - ./tests:/workspace/tests
+    environment:
+      - APP_ENV=development
+      - DEBUG=true
+      - DATABASE_URL=sqlite+aiosqlite:///./robinhood_ai.db
+      - DATABASE_URL_SYNC=sqlite:///./robinhood_ai.db
+      # Force polling for uvicorn's watchfiles — same bind-mount limitation
+      - WATCHFILES_FORCE_POLLING=true
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: robinhood-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount entire frontend directory for full hot-reload support
+      - ./frontend:/workspace
+      # Protect container-installed dependencies from host overwrite
+      - /workspace/node_modules
+      - /workspace/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # Polling-based file watcher — required for Docker on Windows/macOS
+      # where native inotify events aren't forwarded for bind mounts.
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+    command: npx next dev --port 3000 --hostname 0.0.0.0

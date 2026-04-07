@@ -1,4 +1,3 @@
-"use client";
 import Link from "next/link";
 import {
   TrendingUp,
@@ -10,7 +9,7 @@ import {
   RefreshCw,
   FileSpreadsheet,
 } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent } from "@/components/ui/card";
 
 const FEATURES = [

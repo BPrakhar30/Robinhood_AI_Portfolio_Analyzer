@@ -16,6 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.service import get_current_user
 from app.broker_integrations.schemas import (
     RobinhoodConnectRequest,
+    RobinhoodInitiateRequest,
+    RobinhoodMFARequest,
+    RobinhoodInitiateResponse,
     PlaidPublicTokenRequest,
     CSVUploadRequest,
     BrokerConnectionResponse,
@@ -73,6 +76,81 @@ async def connect_robinhood(
         })
     except AppException as e:
         logger.error(f"Robinhood connect failed: {e.message}")
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.post("/connect/robinhood/initiate", response_model=RobinhoodInitiateResponse)
+async def initiate_robinhood(
+    payload: RobinhoodInitiateRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Step 1: Send credentials to Robinhood. Returns MFA challenge info or immediate auth."""
+    try:
+        from app.broker_integrations.robinhood_adapter import RobinhoodAdapter
+
+        result = await RobinhoodAdapter.initiate_login(
+            user_id=current_user.id,
+            username=payload.username,
+            password=payload.password,
+        )
+
+        if result["status"] == "authenticated":
+            # No MFA needed — complete the connection immediately
+            service = BrokerService(session)
+            connection = await service.connect_robinhood_with_tokens(
+                user=current_user,
+                access_token=result["access_token"],
+                refresh_token=result.get("refresh_token", ""),
+            )
+            return RobinhoodInitiateResponse(
+                status="authenticated",
+                data={
+                    "connection_id": connection.id,
+                    "broker_type": connection.broker_type.value,
+                    "connection_status": connection.status.value,
+                },
+            )
+
+        return RobinhoodInitiateResponse(
+            status="mfa_required",
+            mfa_type=result.get("mfa_type"),
+        )
+
+    except AppException as e:
+        logger.error(f"Robinhood initiate failed: {e.message}")
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.post("/connect/robinhood/complete-mfa", response_model=APIResponse)
+async def complete_robinhood_mfa(
+    payload: RobinhoodMFARequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Step 2: Complete MFA with the code the user received (SMS or authenticator app)."""
+    try:
+        from app.broker_integrations.robinhood_adapter import RobinhoodAdapter
+
+        result = await RobinhoodAdapter.complete_mfa(
+            user_id=current_user.id,
+            mfa_code=payload.mfa_code,
+        )
+
+        service = BrokerService(session)
+        connection = await service.connect_robinhood_with_tokens(
+            user=current_user,
+            access_token=result["access_token"],
+            refresh_token=result.get("refresh_token", ""),
+        )
+        return _api_response(data={
+            "connection_id": connection.id,
+            "broker_type": connection.broker_type.value,
+            "status": connection.status.value,
+        })
+
+    except AppException as e:
+        logger.error(f"Robinhood MFA failed: {e.message}")
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
 

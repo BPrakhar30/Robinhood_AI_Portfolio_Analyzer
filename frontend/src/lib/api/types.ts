@@ -103,6 +103,12 @@ export interface StatusResponse {
   timestamp: string;
 }
 
+export interface RobinhoodInitiateResponse {
+  status: "authenticated" | "mfa_required";
+  mfa_type?: "sms" | "email" | "app" | "prompt";
+  data?: Record<string, unknown> | null;
+}
+
 export interface APIStandardResponse {
   status: string;
   data: Record<string, unknown> | null;

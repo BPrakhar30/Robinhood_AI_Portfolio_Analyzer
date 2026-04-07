@@ -194,7 +194,7 @@ function VerifyEmailContent() {
                 Didn&apos;t receive the code? Check your spam folder.
               </p>
               <button
-                className="text-sm font-medium text-foreground hover:underline disabled:opacity-50"
+                className="text-sm font-medium text-foreground hover:underline disabled:opacity-50 cursor-pointer"
                 disabled={resendMutation.isPending}
                 onClick={() => resendMutation.mutate(email)}
               >

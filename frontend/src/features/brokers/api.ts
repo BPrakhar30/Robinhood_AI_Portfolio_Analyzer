@@ -13,6 +13,7 @@ import type {
   SyncStatusResponse,
   CSVTemplateResponse,
   APIStandardResponse,
+  RobinhoodInitiateResponse,
 } from "@/lib/api/types";
 
 export async function fetchConnections(): Promise<BrokerConnectionResponse[]> {
@@ -25,6 +26,25 @@ export async function connectRobinhood(data: {
   mfa_code?: string;
 }): Promise<APIStandardResponse> {
   return api.post<APIStandardResponse>("/api/v1/broker/connect/robinhood", data);
+}
+
+export async function initiateRobinhood(data: {
+  username: string;
+  password: string;
+}): Promise<RobinhoodInitiateResponse> {
+  return api.post<RobinhoodInitiateResponse>(
+    "/api/v1/broker/connect/robinhood/initiate",
+    data
+  );
+}
+
+export async function completeRobinhoodMFA(data: {
+  mfa_code: string;
+}): Promise<APIStandardResponse> {
+  return api.post<APIStandardResponse>(
+    "/api/v1/broker/connect/robinhood/complete-mfa",
+    data
+  );
 }
 
 export async function connectPlaidExchange(

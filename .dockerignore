@@ -1,42 +1,48 @@
-# Environment
-.env
-.env.local
-.env.production
-
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.egg-info/
 dist/
 build/
 .eggs/
-*.egg
 
 # Virtual environments
 venv/
 .venv/
 env/
 
+# Node / Frontend (frontend has its own Dockerfile)
+frontend/
+node_modules/
+
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# Testing
+# Git
+.git/
+.gitignore
+
+# Testing artifacts
 .pytest_cache/
 htmlcov/
 .coverage
 coverage.xml
-
-# Type checking
 .mypy_cache/
 
-# Database
+# Database files
 *.db
 *.sqlite3
+
+# Environment and secrets
+.env
+.env.local
+.env.production
+credentials.json
+*.pem
+*.key
 
 # OS
 .DS_Store
@@ -46,15 +52,6 @@ Thumbs.db
 logs/
 *.log
 
-# Node / Frontend
-node_modules/
-.next/
-
-# Secrets - NEVER commit these
-credentials.json
-service-account.json
-*.pem
-*.key
-
 # Docker
-docker-compose.override.yml
+docker-compose.yml
+Dockerfile

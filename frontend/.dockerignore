@@ -1,0 +1,28 @@
+# Dependencies (installed fresh inside the container)
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+Dockerfile

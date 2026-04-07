@@ -142,7 +142,7 @@ function LoginForm() {
                     <p>Please verify your email address before logging in.</p>
                     <button
                       type="button"
-                      className="underline font-medium text-amber-800 dark:text-amber-300"
+                      className="underline font-medium text-amber-800 dark:text-amber-300 cursor-pointer"
                       disabled={resendMutation.isPending}
                       onClick={() => {
                         resendMutation.mutate(unverifiedEmail, {
@@ -180,7 +180,7 @@ function LoginForm() {
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="font-medium text-foreground hover:underline"
+            className="font-medium text-foreground hover:underline cursor-pointer"
           >
             Create one
           </Link>

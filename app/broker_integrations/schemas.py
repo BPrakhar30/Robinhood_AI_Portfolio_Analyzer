@@ -18,6 +18,21 @@ class RobinhoodConnectRequest(BaseModel):
     device_token: Optional[str] = None
 
 
+class RobinhoodInitiateRequest(BaseModel):
+    username: str
+    password: str
+
+
+class RobinhoodMFARequest(BaseModel):
+    mfa_code: str = ""
+
+
+class RobinhoodInitiateResponse(BaseModel):
+    status: str  # "authenticated" | "mfa_required"
+    mfa_type: Optional[str] = None  # "sms" | "app"
+    data: Optional[dict] = None
+
+
 class PlaidPublicTokenRequest(BaseModel):
     public_token: str
 

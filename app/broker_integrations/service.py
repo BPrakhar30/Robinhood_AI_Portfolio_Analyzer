@@ -119,6 +119,39 @@ class BrokerService:
         await adapter.disconnect()
         return connection
 
+    async def connect_robinhood_with_tokens(
+        self, user: User, access_token: str, refresh_token: str = ""
+    ) -> BrokerConnection:
+        """
+        Create/update a Robinhood connection using pre-obtained OAuth tokens
+        (from the two-step MFA flow). Bootstraps robin_stocks for portfolio sync.
+        """
+        adapter = RobinhoodAdapter()
+        adapter.set_access_token(access_token)
+
+        connection = await self._upsert_connection(
+            user_id=user.id,
+            broker_type=BrokerType.ROBINHOOD,
+            access_token=access_token,
+            refresh_token=refresh_token,
+        )
+
+        try:
+            await self._sync_portfolio(adapter, connection, user.id)
+        except Exception as e:
+            logger.warning(
+                f"Initial portfolio sync failed (connection still saved): {e}",
+                extra={"event": "initial_sync_warning", "broker": "robinhood"},
+            )
+            connection.sync_error_message = str(e)
+
+        try:
+            await adapter.disconnect()
+        except Exception:
+            pass
+
+        return connection
+
     async def connect_plaid(self, user: User, public_token: str) -> BrokerConnection:
         """
         Connect via Plaid by exchanging a public_token for an access_token.

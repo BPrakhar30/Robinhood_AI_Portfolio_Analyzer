@@ -38,22 +38,54 @@ Upload a CSV export of your portfolio data as a manual fallback. This works with
 - Broker connection management (connect, sync, disconnect)
 - Encrypted storage of broker credentials and tokens
 - Responsive UI with dark/light mode support
-- Toast notifications for user feedback on all actions
+- Inline feedback for user actions (no external toast popups)
 - Protected routes with authentication guard
 - Health check endpoint and system status indicator
+- Dockerized development environment with bind mounts for live reloading
 
 ## Tech Stack
 
 - **Backend**: Python, FastAPI, SQLAlchemy (async), Pydantic, JWT, bcrypt, Fernet encryption
-- **Frontend**: Next.js 15, React, TypeScript, Tailwind CSS, shadcn/ui, Zustand, TanStack Query
+- **Frontend**: Next.js 16, React, TypeScript, Tailwind CSS, shadcn/ui, Zustand, TanStack Query
 - **Database**: SQLite (development), PostgreSQL-ready (production)
+- **DevOps**: Docker, Docker Compose
 
 ## Running the App
 
-1. Set up the Python virtual environment and install dependencies:
+### Option 1: Docker (Recommended)
+
+This is the simplest way to run the app — no Python or Node.js installation required on your machine. Just Docker.
+
+1. Make sure [Docker Desktop](https://www.docker.com/products/docker-desktop/) is installed and running.
+
+2. (Optional) Copy `.env.example` to `.env` and fill in your configuration values. The app runs with sensible defaults (SQLite, development mode) if `.env` is absent.
+
+3. Build and start both services:
    ```
-   python -m venv venv
-   venv\Scripts\activate
+   docker compose up --build
+   ```
+
+4. Open the app:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Docs (Swagger): http://localhost:8000/docs
+
+5. **Live reloading**: Source code is bind-mounted into the containers. Edit any file under `app/` (backend) or `frontend/src/` (frontend) and the changes reflect automatically — no rebuild needed.
+
+6. Stop the containers:
+   ```
+   docker compose down
+   ```
+
+7. If you change `requirements.txt` or `package.json` (new dependencies), rebuild:
+   ```
+   docker compose up --build
+   ```
+
+### Option 2: Local Development (without Docker)
+
+1. Set up Python and install dependencies (works with venv, conda, or system Python — just make sure `python` is in your PATH):
+   ```
    pip install -r requirements.txt
    ```
 

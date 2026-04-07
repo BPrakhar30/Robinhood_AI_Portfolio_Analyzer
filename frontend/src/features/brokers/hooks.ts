@@ -12,6 +12,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchConnections,
   connectRobinhood,
+  initiateRobinhood,
+  completeRobinhoodMFA,
   connectCSV,
   disconnectBroker,
   syncConnection,
@@ -65,6 +67,28 @@ export function useConnectRobinhood() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: connectRobinhood,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broker"] });
+    },
+  });
+}
+
+export function useInitiateRobinhood() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: initiateRobinhood,
+    onSuccess: (data) => {
+      if (data.status === "authenticated") {
+        qc.invalidateQueries({ queryKey: ["broker"] });
+      }
+    },
+  });
+}
+
+export function useCompleteRobinhoodMFA() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: completeRobinhoodMFA,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["broker"] });
     },
