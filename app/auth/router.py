@@ -75,3 +75,14 @@ async def login(
 async def get_me(current_user: User = Depends(get_current_user)):
     """Get the current authenticated user's profile."""
     return current_user
+
+
+@router.delete("/account", response_model=MessageResponse)
+async def delete_account(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Permanently delete the authenticated user's account and all associated data."""
+    service = AuthService(session)
+    await service.delete_account(current_user)
+    return {"message": "Account deleted successfully."}

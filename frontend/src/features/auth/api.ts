@@ -44,3 +44,7 @@ export async function loginUser(data: {
 export async function fetchCurrentUser(): Promise<UserResponse> {
   return api.get<UserResponse>("/api/v1/auth/me");
 }
+
+export async function deleteAccount(): Promise<MessageResponse> {
+  return api.delete<MessageResponse>("/api/v1/auth/account");
+}

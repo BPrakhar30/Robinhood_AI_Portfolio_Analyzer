@@ -212,6 +212,13 @@ class AuthService:
             algorithm=self._settings.jwt_algorithm,
         )
 
+    async def delete_account(self, user: User) -> bool:
+        """Permanently delete a user account and all associated data."""
+        await self._session.delete(user)
+        await self._session.flush()
+        logger.info("Account deleted", extra={"event": "account_deleted", "user_id": user.id})
+        return True
+
     @staticmethod
     def verify_token(token: str) -> Optional[int]:
         settings = get_settings()

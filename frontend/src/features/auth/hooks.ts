@@ -17,6 +17,7 @@ import {
   fetchCurrentUser,
   verifyEmail,
   resendVerification,
+  deleteAccount,
 } from "./api";
 import type { LoginFormData, RegisterFormData } from "./schemas";
 
@@ -102,4 +103,19 @@ export function useLogout() {
     queryClient.clear();
     router.push("/login");
   };
+}
+
+export function useDeleteAccount() {
+  const { logout } = useAuthStore();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => {
+      logout();
+      queryClient.clear();
+      router.push("/login");
+    },
+  });
 }
