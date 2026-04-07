@@ -26,12 +26,12 @@ export function MobileSidebar() {
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
-      <div className="flex items-center gap-2 px-4 h-14 border-b border-border">
+      <Link href="/dashboard" className="flex items-center gap-2 px-4 h-14 border-b border-border cursor-pointer hover:bg-accent/50 transition-colors">
         <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
           <TrendingUp className="h-4 w-4 text-primary-foreground" />
         </div>
         <span className="font-semibold text-sm">{APP_NAME}</span>
-      </div>
+      </Link>
       <nav className="flex-1 py-3 px-2 space-y-1">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;

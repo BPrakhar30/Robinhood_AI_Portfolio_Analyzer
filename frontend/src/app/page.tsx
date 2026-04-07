@@ -51,12 +51,12 @@ export default function LandingPage() {
       {/* Navigation */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-semibold text-sm">RobinhoodAI Copilot</span>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             <Link href="/login" className={buttonVariants({ variant: "ghost", size: "sm" })}>
               Log in
