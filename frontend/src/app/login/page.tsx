@@ -33,6 +33,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "true";
   const verified = searchParams.get("verified") === "true";
+  const passwordReset = searchParams.get("reset") === "true";
   const router = useRouter();
   const login = useLogin();
   const resendMutation = useResendVerification();
@@ -90,6 +91,14 @@ function LoginForm() {
           </Alert>
         )}
 
+        {passwordReset && (
+          <Alert className="border-emerald-500/30 bg-emerald-500/5">
+            <AlertDescription className="text-emerald-700 dark:text-emerald-400 text-sm">
+              Password reset successfully! Sign in with your new password.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardContent className="pt-6">
             <form
@@ -114,7 +123,15 @@ function LoginForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   type="password"

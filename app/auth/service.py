@@ -20,10 +20,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings, Environment
 from app.database.engine import get_async_session
 from app.database.models import User
+import secrets
+
 from app.utils.email import (
     generate_verification_code,
     verification_code_expiry,
     send_verification_email,
+    password_reset_expiry,
+    send_password_reset_email,
 )
 from app.utils.logging import get_logger
 
@@ -216,6 +220,68 @@ class AuthService:
             self._settings.jwt_secret_key,
             algorithm=self._settings.jwt_algorithm,
         )
+
+    async def forgot_password(self, email: str) -> dict:
+        """Generate a password reset token and send it via email.
+
+        Always returns a generic message to prevent email enumeration.
+        """
+        result = await self._session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {"message": "If an account with that email exists, a reset link has been sent."}
+
+        token = secrets.token_urlsafe(32)
+        user.password_reset_token = token
+        user.password_reset_expires_at = password_reset_expiry()
+        await self._session.flush()
+
+        await send_password_reset_email(email, token, user.full_name)
+
+        logger.info(
+            "Password reset requested",
+            extra={"event": "password_reset_requested", "user_id": user.id},
+        )
+        return {"message": "If an account with that email exists, a reset link has been sent."}
+
+    async def reset_password(self, token: str, new_password: str) -> dict:
+        """Validate a reset token and update the user's password."""
+        result = await self._session.execute(
+            select(User).where(User.password_reset_token == token)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset link.",
+            )
+
+        if user.password_reset_expires_at:
+            expiry = user.password_reset_expires_at
+            now = datetime.now(timezone.utc)
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+            if expiry < now:
+                user.password_reset_token = None
+                user.password_reset_expires_at = None
+                await self._session.flush()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Reset link has expired. Please request a new one.",
+                )
+
+        user.hashed_password = _hash_password(new_password)
+        user.password_reset_token = None
+        user.password_reset_expires_at = None
+        await self._session.flush()
+
+        logger.info(
+            "Password reset completed",
+            extra={"event": "password_reset_completed", "user_id": user.id},
+        )
+        return {"message": "Password has been reset successfully. You can now log in."}
 
     async def delete_account(self, user: User) -> bool:
         """Permanently delete a user account and all associated data."""

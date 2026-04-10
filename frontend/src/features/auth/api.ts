@@ -45,6 +45,17 @@ export async function fetchCurrentUser(): Promise<UserResponse> {
   return api.get<UserResponse>("/api/v1/auth/me");
 }
 
+export async function forgotPassword(email: string): Promise<MessageResponse> {
+  return api.post<MessageResponse>("/api/v1/auth/forgot-password", { email });
+}
+
+export async function resetPassword(data: {
+  token: string;
+  new_password: string;
+}): Promise<MessageResponse> {
+  return api.post<MessageResponse>("/api/v1/auth/reset-password", data);
+}
+
 export async function deleteAccount(): Promise<MessageResponse> {
   return api.delete<MessageResponse>("/api/v1/auth/account");
 }

@@ -18,6 +18,7 @@ logger = get_logger("email")
 
 CODE_LENGTH = 6
 CODE_EXPIRY_MINUTES = 15
+RESET_TOKEN_EXPIRY_MINUTES = 15
 
 
 def generate_verification_code() -> str:
@@ -107,5 +108,91 @@ async def send_verification_email(
     except Exception as e:
         logger.error(
             f"Failed to send verification email: {e}",
+            extra={"email": email},
+        )
+
+
+def password_reset_expiry() -> datetime:
+    return datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRY_MINUTES)
+
+
+async def send_password_reset_email(
+    email: str, token: str, full_name: str | None = None
+) -> None:
+    settings = get_settings()
+    frontend_url = getattr(settings, "frontend_url", "http://localhost:3000")
+    reset_link = f"{frontend_url}/reset-password?token={token}"
+
+    if settings.app_env == Environment.DEVELOPMENT:
+        border = "=" * 60
+        print(f"\n[backend] {border}")
+        print(f"[backend]   PASSWORD RESET (Dev Mode)")
+        print(f"[backend]   To:      {email}")
+        print(f"[backend]   Name:    {full_name or 'N/A'}")
+        print(f"[backend]   Token:   {token}")
+        print(f"[backend]   Link:    {reset_link}")
+        print(f"[backend]   Expires: {RESET_TOKEN_EXPIRY_MINUTES} minutes")
+        print(f"[backend] {border}\n", flush=True)
+        return
+
+    if not settings.smtp_host:
+        logger.warning(
+            "SMTP not configured — cannot send password reset email",
+            extra={"email": email},
+        )
+        return
+
+    try:
+        import aiosmtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Reset your {settings.app_name} password"
+        msg["From"] = settings.smtp_from_email
+        msg["To"] = email
+
+        plain = (
+            f"Hi {full_name or 'there'},\n\n"
+            f"We received a request to reset your password.\n\n"
+            f"Click this link to set a new password:\n{reset_link}\n\n"
+            f"This link expires in {RESET_TOKEN_EXPIRY_MINUTES} minutes.\n\n"
+            "If you did not request a password reset, you can safely ignore this email."
+        )
+
+        html = f"""\
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background: #f9fafb;">
+  <div style="max-width: 480px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.1);">
+    <h2 style="margin: 0 0 8px; font-size: 20px;">Reset your password</h2>
+    <p style="color: #555; font-size: 15px;">Hi {full_name or 'there'},</p>
+    <p style="color: #555; font-size: 15px;">Click the button below to set a new password:</p>
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="{reset_link}" style="display: inline-block; padding: 14px 32px; background: #18181b; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
+        Reset Password
+      </a>
+    </div>
+    <p style="color: #999; font-size: 13px;">This link expires in {RESET_TOKEN_EXPIRY_MINUTES} minutes.</p>
+    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+    <p style="color: #bbb; font-size: 12px;">If you didn&rsquo;t request this, ignore this email. Your password will remain unchanged.</p>
+  </div>
+</body>
+</html>"""
+
+        msg.attach(MIMEText(plain, "plain"))
+        msg.attach(MIMEText(html, "html"))
+
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.smtp_host,
+            port=settings.smtp_port,
+            username=settings.smtp_user or None,
+            password=settings.smtp_password or None,
+            use_tls=settings.smtp_use_tls,
+        )
+        logger.info("Password reset email sent", extra={"email": email})
+    except Exception as e:
+        logger.error(
+            f"Failed to send password reset email: {e}",
             extra={"email": email},
         )

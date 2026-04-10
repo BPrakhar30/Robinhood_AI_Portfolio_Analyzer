@@ -17,6 +17,8 @@ from app.auth.schemas import (
     RegistrationResponse,
     VerifyEmailRequest,
     ResendVerificationRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
     MessageResponse,
 )
 from app.auth.service import AuthService, get_current_user
@@ -69,6 +71,26 @@ async def login(
     """Authenticate and receive a JWT access token."""
     service = AuthService(session)
     return await service.login(email=payload.email, password=payload.password)
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Request a password reset link. Always returns generic messaging (anti-enumeration)."""
+    service = AuthService(session)
+    return await service.forgot_password(email=payload.email)
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Reset password using a valid reset token."""
+    service = AuthService(session)
+    return await service.reset_password(token=payload.token, new_password=payload.new_password)
 
 
 @router.get("/me", response_model=UserResponse)

@@ -17,6 +17,8 @@ import {
   fetchCurrentUser,
   verifyEmail,
   resendVerification,
+  forgotPassword,
+  resetPassword,
   deleteAccount,
 } from "./api";
 import type { LoginFormData, RegisterFormData } from "./schemas";
@@ -103,6 +105,24 @@ export function useLogout() {
     queryClient.clear();
     router.push("/login");
   };
+}
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (email: string) => forgotPassword(email),
+  });
+}
+
+export function useResetPassword() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: { token: string; new_password: string }) =>
+      resetPassword(data),
+    onSuccess: () => {
+      router.push("/login?reset=true");
+    },
+  });
 }
 
 export function useDeleteAccount() {

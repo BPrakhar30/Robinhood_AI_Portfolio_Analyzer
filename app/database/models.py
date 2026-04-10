@@ -74,6 +74,8 @@ class User(Base):
     # Stores the *hashed* 6-digit OTP from email verification, not the plaintext code.
     email_verification_token = Column(String(255), nullable=True, index=True)
     email_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
+    password_reset_token = Column(String(255), nullable=True, index=True)
+    password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

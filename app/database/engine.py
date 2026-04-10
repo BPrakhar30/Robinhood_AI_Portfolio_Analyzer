@@ -58,6 +58,31 @@ async def get_async_session() -> AsyncSession:
 
 
 async def init_db():
-    """Create tables that don't already exist. Used for development/testing only."""
+    """Create tables that don't already exist and add missing columns.
+
+    SQLite's create_all won't add new columns to existing tables, so
+    _ensure_columns handles lightweight schema migrations at startup.
+    """
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        if settings.database_url.startswith("sqlite"):
+            await conn.run_sync(_ensure_columns)
+
+
+def _ensure_columns(conn):
+    """Add columns that may be missing from existing SQLite tables."""
+    import sqlalchemy as sa
+
+    _add_column_if_missing(conn, "users", "password_reset_token", "VARCHAR(255)")
+    _add_column_if_missing(conn, "users", "password_reset_expires_at", "DATETIME")
+
+
+def _add_column_if_missing(conn, table: str, column: str, col_type: str):
+    """Safely add a column to a SQLite table if it doesn't exist yet."""
+    import sqlalchemy as sa
+
+    result = conn.execute(sa.text(f"PRAGMA table_info({table})"))
+    existing = {row[1] for row in result}
+    if column not in existing:
+        conn.execute(sa.text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+        conn.execute(sa.text("SELECT 1"))
