@@ -110,9 +110,73 @@ export interface RobinhoodInitiateResponse {
   data?: Record<string, unknown> | null;
 }
 
+export interface AllocationHolding {
+  symbol: string;
+  name: string;
+  asset_type: string;
+  market_value: number;
+  percent: number;
+}
+
+export interface AllocationBreakdown {
+  label: string;
+  value: number;
+  percent: number;
+  holdings: AllocationHolding[];
+}
+
+export interface AllocationResponse {
+  total_value: number;
+  by_sector: AllocationBreakdown[];
+  by_asset_class: AllocationBreakdown[];
+  by_geography: AllocationBreakdown[];
+  by_market_cap: AllocationBreakdown[];
+  by_risk_level: AllocationBreakdown[];
+}
+
 export interface APIStandardResponse {
   status: string;
   data: Record<string, unknown> | null;
   error_message: string | null;
   timestamp: string;
+}
+
+// ── Portfolio Health Score ──────────────────────────────────────────
+
+export interface SubScoreDetail {
+  score: number;
+  label: string;
+  description: string;
+  details: Record<string, unknown> | null;
+}
+
+export interface HealthScoreResponse {
+  overall_score: number;
+  grade: string;
+  sub_scores: Record<string, SubScoreDetail>;
+  top_issues: string[];
+  suggestions: string[];
+}
+
+// ── Risk Alerts ────────────────────────────────────────────────────
+
+export interface RiskAlert {
+  id: string;
+  severity: "high" | "medium" | "low";
+  category: string;
+  title: string;
+  description: string;
+  metric: string;
+  threshold: string;
+}
+
+export interface AlertSummary {
+  high: number;
+  medium: number;
+  low: number;
+}
+
+export interface RiskAlertsResponse {
+  alerts: RiskAlert[];
+  summary: AlertSummary;
 }

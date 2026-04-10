@@ -50,15 +50,16 @@ const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
   { label: "Brokers", href: "/brokers", icon: "Link" },
   { label: "Positions", href: "/positions", icon: "TrendingUp" },
+  { label: "Allocation", href: "/allocation", icon: "PieChart" },
   { label: "Transactions", href: "/transactions", icon: "ArrowLeftRight" },
-  { label: "Summary", href: "/summary", icon: "PieChart" },
+  { label: "AI Assistant", href: "/assistant", icon: "Bot" },
+  { label: "Health Score", href: "/health", icon: "Activity" },
+  { label: "Alerts", href: "/alerts", icon: "Bell" },
+  { label: "Summary", href: "/summary", icon: "Activity" },
   { label: "Settings", href: "/settings", icon: "Settings" },
 ];
 
 const FUTURE_NAV_ITEMS = [
-  { label: "AI Assistant", href: "#", icon: "Bot" },
-  { label: "Health Score", href: "#", icon: "Activity" },
-  { label: "Alerts", href: "#", icon: "Bell" },
   { label: "Scenarios", href: "#", icon: "FlaskConical" },
 ];
 
