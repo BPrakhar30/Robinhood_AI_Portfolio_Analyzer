@@ -12,6 +12,7 @@ from collections import defaultdict
 from itertools import combinations
 
 from .etf_data import (
+    DEFAULT_EXPENSE_RATIO,
     compute_etf_overlap,
     get_beta,
     get_expense_ratio,
@@ -156,8 +157,8 @@ def _volatility_score(
         return 50.0, {"weighted_beta": 1.0}
 
     weighted_beta = sum(
-        (mv / total_value) * get_beta(sector, asset_type)
-        for _, mv, sector, asset_type in holdings
+        (mv / total_value) * get_beta(sector, asset_type, symbol)
+        for symbol, mv, sector, asset_type in holdings
     )
 
     # Score: beta > 2.0 → 0-20, 1.5-2.0 → 20-50, 1.0-1.5 → 50-80, <1.0 → 80-100
@@ -190,7 +191,7 @@ def _expense_score(
         return 100.0, {"weighted_expense_ratio": 0}
 
     weighted_er = sum(
-        (mv / etf_total) * (get_expense_ratio(sym) or 0.20)
+        (mv / etf_total) * (get_expense_ratio(sym) or DEFAULT_EXPENSE_RATIO)
         for sym, mv in etf_holdings
     )
 
