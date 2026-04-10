@@ -22,6 +22,7 @@ import {
   fetchTransactions,
   fetchSummary,
   fetchCSVTemplate,
+  fetchAllocation,
 } from "./api";
 
 export function useConnections() {
@@ -133,5 +134,13 @@ export function useSyncConnection() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["broker"] });
     },
+  });
+}
+
+export function useAllocation() {
+  return useQuery({
+    queryKey: ["broker", "allocation"],
+    queryFn: fetchAllocation,
+    staleTime: 60_000,
   });
 }

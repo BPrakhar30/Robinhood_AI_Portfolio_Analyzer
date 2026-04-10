@@ -108,15 +108,17 @@ function BrokersContent() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSync(conn.id)}
-                      disabled={syncMutation.isPending || conn.status === "disconnected"}
-                    >
-                      <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
-                      Sync
-                    </Button>
+                    {conn.broker_type !== "csv" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSync(conn.id)}
+                        disabled={syncMutation.isPending || conn.status === "disconnected"}
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
+                        Sync
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CurrencyText } from "@/components/portfolio/currency-text";
-import { GainLossBadge } from "@/components/portfolio/gain-loss-badge";
+import { GainLossDisplay } from "@/components/portfolio/gain-loss-display";
 import { Badge } from "@/components/ui/badge";
 
 type SortKey = "symbol" | "market_value" | "unrealized_gains" | "weight_percent" | "quantity" | "total_amount_invested";
@@ -82,6 +82,9 @@ export default function PositionsPage() {
     </Button>
   );
 
+  const formatQuantity = (value: number) =>
+    value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -112,22 +115,78 @@ export default function PositionsPage() {
             />
           </div>
 
-          {/* Table */}
+          {/* Mobile cards */}
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="divide-y md:hidden">
+                {filtered.map((pos) => (
+                  <div key={pos.symbol} className="space-y-4 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold">{pos.symbol}</p>
+                          <Badge variant="outline" className="text-[10px] capitalize">
+                            {pos.asset_type}
+                          </Badge>
+                        </div>
+                        <p className="truncate text-sm text-muted-foreground">{pos.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Market Value</p>
+                        <CurrencyText value={pos.market_value} className="text-sm font-semibold" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Quantity</p>
+                        <p className="tabular-nums">{formatQuantity(pos.quantity)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Weight</p>
+                        <p className="tabular-nums">{pos.weight_percent.toFixed(1)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Avg Cost</p>
+                        <CurrencyText value={pos.average_cost} className="text-sm" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Current Price</p>
+                        <CurrencyText value={pos.current_price} className="text-sm" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Invested</p>
+                        <CurrencyText value={pos.total_amount_invested} className="text-sm" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Gain/Loss</p>
+                        <GainLossDisplay
+                          value={pos.unrealized_gains}
+                          invested={pos.total_amount_invested}
+                          align="right"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filtered.length === 0 && (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No positions match &ldquo;{search}&rdquo;
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="sticky left-0 bg-background z-10">
+                      <TableHead>
                         <SortButton label="Symbol" field="symbol" />
                       </TableHead>
-                      <TableHead className="hidden sm:table-cell">Name</TableHead>
                       <TableHead className="text-right">
                         <SortButton label="Quantity" field="quantity" />
                       </TableHead>
-                      <TableHead className="text-right">Avg Cost</TableHead>
-                      <TableHead className="text-right">Current Price</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
                       <TableHead className="text-right">
                         <SortButton label="Invested" field="total_amount_invested" />
                       </TableHead>
@@ -140,49 +199,58 @@ export default function PositionsPage() {
                       <TableHead className="text-right">
                         <SortButton label="Weight" field="weight_percent" />
                       </TableHead>
-                      <TableHead className="hidden lg:table-cell">Type</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filtered.map((pos) => (
                       <TableRow key={pos.symbol}>
-                        <TableCell className="font-medium sticky left-0 bg-background z-10">
-                          {pos.symbol}
+                        <TableCell className="align-top">
+                          <div className="min-w-0 space-y-1">
+                            <p className="font-medium">{pos.symbol}</p>
+                            <p className="max-w-[220px] truncate text-sm text-muted-foreground">
+                              {pos.name}
+                            </p>
+                            <Badge variant="outline" className="text-[10px] capitalize">
+                              {pos.asset_type}
+                            </Badge>
+                          </div>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-muted-foreground text-sm truncate max-w-[200px]">
-                          {pos.name}
+                        <TableCell className="text-right tabular-nums align-top">
+                          {formatQuantity(pos.quantity)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {pos.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                        <TableCell className="text-right align-top">
+                          <div className="space-y-1 text-sm">
+                            <div>
+                              <span className="mr-2 text-xs text-muted-foreground">Avg</span>
+                              <CurrencyText value={pos.average_cost} className="text-sm" />
+                            </div>
+                            <div>
+                              <span className="mr-2 text-xs text-muted-foreground">Now</span>
+                              <CurrencyText value={pos.current_price} className="text-sm" />
+                            </div>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <CurrencyText value={pos.average_cost} className="text-sm" />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <CurrencyText value={pos.current_price} className="text-sm" />
-                        </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right align-top">
                           <CurrencyText value={pos.total_amount_invested} className="text-sm" />
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right align-top">
                           <CurrencyText value={pos.market_value} className="text-sm font-semibold" />
                         </TableCell>
-                        <TableCell className="text-right">
-                          <GainLossBadge value={pos.unrealized_gains} />
+                        <TableCell className="text-right align-top">
+                          <GainLossDisplay
+                            value={pos.unrealized_gains}
+                            invested={pos.total_amount_invested}
+                            align="right"
+                          />
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+                        <TableCell className="text-right tabular-nums text-sm text-muted-foreground align-top">
                           {pos.weight_percent.toFixed(1)}%
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {pos.asset_type}
-                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
                     {filtered.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           No positions match &ldquo;{search}&rdquo;
                         </TableCell>
                       </TableRow>

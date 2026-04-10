@@ -12,6 +12,7 @@ import type {
   AccountSummaryResponse,
   SyncStatusResponse,
   CSVTemplateResponse,
+  AllocationResponse,
   APIStandardResponse,
   RobinhoodInitiateResponse,
 } from "@/lib/api/types";
@@ -111,4 +112,8 @@ export async function fetchSummary(): Promise<AccountSummaryResponse> {
 
 export async function fetchCSVTemplate(): Promise<CSVTemplateResponse> {
   return api.get<CSVTemplateResponse>("/api/v1/broker/csv/template");
+}
+
+export async function fetchAllocation(): Promise<AllocationResponse> {
+  return api.get<AllocationResponse>("/api/v1/broker/allocation");
 }
