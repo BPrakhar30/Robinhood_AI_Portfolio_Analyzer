@@ -28,6 +28,9 @@ from app.broker_integrations.schemas import (
     SyncStatusResponse,
     PlaidLinkTokenResponse,
     CSVTemplateResponse,
+    AllocationHolding,
+    AllocationBreakdown,
+    AllocationResponse,
     APIResponse,
 )
 from app.broker_integrations.service import BrokerService
@@ -405,4 +408,111 @@ async def get_account_summary(
         buying_power=cash_balance,
         total_realized_gains=total_realized,
         total_unrealized_gains=total_unrealized,
+    )
+
+
+@router.get("/allocation", response_model=AllocationResponse)
+async def get_allocation(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Compute portfolio allocation by sector, asset class, geography, market cap, and risk level."""
+    from collections import defaultdict
+    from app.utils.symbol_enrichment import get_symbol_profile, classify_risk_bucket
+
+    service = BrokerService(session)
+    positions = await service.get_positions(current_user)
+
+    if not positions:
+        empty: list[AllocationBreakdown] = []
+        return AllocationResponse(
+            total_value=0,
+            by_sector=empty,
+            by_asset_class=empty,
+            by_geography=empty,
+            by_market_cap=empty,
+            by_risk_level=empty,
+        )
+
+    sector_val: dict[str, float] = defaultdict(float)
+    asset_val: dict[str, float] = defaultdict(float)
+    geo_val: dict[str, float] = defaultdict(float)
+    cap_val: dict[str, float] = defaultdict(float)
+    risk_val: dict[str, float] = defaultdict(float)
+
+    sector_hold: dict[str, list] = defaultdict(list)
+    asset_hold: dict[str, list] = defaultdict(list)
+    geo_hold: dict[str, list] = defaultdict(list)
+    cap_hold: dict[str, list] = defaultdict(list)
+    risk_hold: dict[str, list] = defaultdict(list)
+
+    total_value = 0.0
+
+    for pos in positions:
+        mv = pos.quantity * (pos.current_price or 0)
+        if mv <= 0:
+            continue
+        total_value += mv
+
+        asset_type_str = pos.asset_type.value if pos.asset_type else "stock"
+
+        profile = await get_symbol_profile(
+            symbol=pos.symbol,
+            asset_type=asset_type_str,
+            session=session,
+        )
+
+        holding_info = (pos.symbol, pos.name or pos.symbol, asset_type_str, mv)
+
+        sector_label = pos.sector or profile.sector
+        sector_val[sector_label] += mv
+        sector_hold[sector_label].append(holding_info)
+
+        asset_key = asset_type_str.upper()
+        asset_val[asset_key] += mv
+        asset_hold[asset_key].append(holding_info)
+
+        geo_val[profile.country] += mv
+        geo_hold[profile.country].append(holding_info)
+
+        cap_val[profile.market_cap_category] += mv
+        cap_hold[profile.market_cap_category].append(holding_info)
+
+        risk_key = classify_risk_bucket(sector_label)
+        risk_val[risk_key] += mv
+        risk_hold[risk_key].append(holding_info)
+
+    def _to_breakdown(
+        val_map: dict[str, float],
+        hold_map: dict[str, list],
+    ) -> list[AllocationBreakdown]:
+        items = sorted(val_map.items(), key=lambda x: x[1], reverse=True)
+        result = []
+        for label, val in items:
+            bucket_total = val if val > 0 else 1
+            holdings = sorted(hold_map[label], key=lambda h: h[3], reverse=True)
+            result.append(AllocationBreakdown(
+                label=label,
+                value=round(val, 2),
+                percent=round(val / total_value * 100, 2) if total_value > 0 else 0,
+                holdings=[
+                    AllocationHolding(
+                        symbol=sym,
+                        name=name,
+                        asset_type=at,
+                        market_value=round(hmv, 2),
+                        percent=round(hmv / bucket_total * 100, 2),
+                    )
+                    for sym, name, at, hmv in holdings
+                ],
+            ))
+        return result
+
+    return AllocationResponse(
+        total_value=round(total_value, 2),
+        by_sector=_to_breakdown(sector_val, sector_hold),
+        by_asset_class=_to_breakdown(asset_val, asset_hold),
+        by_geography=_to_breakdown(geo_val, geo_hold),
+        by_market_cap=_to_breakdown(cap_val, cap_hold),
+        by_risk_level=_to_breakdown(risk_val, risk_hold),
     )

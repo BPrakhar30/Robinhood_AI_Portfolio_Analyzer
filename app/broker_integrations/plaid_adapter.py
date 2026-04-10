@@ -31,6 +31,7 @@ from app.broker_integrations.base import (
     TransactionData,
     AccountSummary,
 )
+from app.broker_integrations.export_aggregator import classify_symbol_asset_type
 from app.config import get_settings
 from app.utils.logging import get_logger
 from app.utils.exceptions import (
@@ -219,14 +220,17 @@ class PlaidAdapter(BrokerInterface):
                     current_price = float(security.close_price or 0)
                     unrealized = (current_price * quantity) - cost_basis
 
-                    asset_type = "stock"
                     sec_type = getattr(security, "type", "")
-                    if sec_type == "etf":
-                        asset_type = "etf"
-                    elif sec_type == "cryptocurrency":
+                    if sec_type == "cryptocurrency":
                         asset_type = "crypto"
                     elif sec_type == "mutual fund":
                         asset_type = "mutual_fund"
+                    else:
+                        default_asset_type = "etf" if sec_type == "etf" else "stock"
+                        asset_type = classify_symbol_asset_type(
+                            symbol,
+                            default=default_asset_type,
+                        )
 
                     positions.append(
                         PositionData(
@@ -238,6 +242,7 @@ class PlaidAdapter(BrokerInterface):
                             unrealized_gains=unrealized,
                             asset_type=asset_type,
                             sector=getattr(security, "sector", None),
+                            total_amount_invested=cost_basis,
                         )
                     )
                 except (ValueError, AttributeError) as e:

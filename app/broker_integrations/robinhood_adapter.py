@@ -47,6 +47,7 @@ from app.broker_integrations.base import (
     TransactionData,
     AccountSummary,
 )
+from app.broker_integrations.export_aggregator import classify_symbol_asset_type
 from app.utils.logging import get_logger
 from app.utils.exceptions import (
     BrokerAuthenticationError,
@@ -454,7 +455,9 @@ class RobinhoodAdapter(BrokerInterface):
                         avg_cost = float(data.get("average_buy_price", 0))
                         current_price = float(data.get("price", 0))
                         equity = float(data.get("equity", 0))
+                        invested = avg_cost * quantity
                         unrealized = equity - (avg_cost * quantity)
+                        raw_asset_type = str(data.get("type", "stock")).strip().lower() or "stock"
 
                         positions.append(
                             PositionData(
@@ -464,8 +467,12 @@ class RobinhoodAdapter(BrokerInterface):
                                 average_cost=avg_cost,
                                 current_price=current_price,
                                 unrealized_gains=unrealized,
-                                asset_type=data.get("type", "stock"),
+                                asset_type=classify_symbol_asset_type(
+                                    symbol,
+                                    default=raw_asset_type,
+                                ),
                                 sector=data.get("sector"),
+                                total_amount_invested=invested,
                             )
                         )
                     except (ValueError, KeyError) as e:
@@ -509,23 +516,40 @@ class RobinhoodAdapter(BrokerInterface):
                         if quantity <= 0:
                             continue
                         cost_bases = crypto.get("cost_bases", [{}])
+                        invested = float(cost_bases[0].get("direct_cost_basis", 0) or 0)
                         avg_cost = (
-                            float(cost_bases[0].get("direct_cost_basis", 0)) / quantity
+                            invested / quantity
                             if quantity
                             else 0
                         )
                         symbol = crypto.get("currency", {}).get("code", "UNKNOWN")
+                        quote = await asyncio.wait_for(
+                            asyncio.get_event_loop().run_in_executor(
+                                None,
+                                lambda s=symbol: rh.crypto.get_crypto_quote(s),
+                            ),
+                            timeout=TIMEOUT_SECONDS,
+                        )
+                        current_price = float(
+                            (quote or {}).get("mark_price")
+                            or (quote or {}).get("ask_price")
+                            or (quote or {}).get("bid_price")
+                            or 0
+                        )
+                        unrealized = (current_price * quantity) - invested
                         positions.append(
                             PositionData(
                                 symbol=symbol,
                                 name=crypto.get("currency", {}).get("name", symbol),
                                 quantity=quantity,
                                 average_cost=avg_cost,
-                                current_price=0.0,
+                                current_price=current_price,
+                                unrealized_gains=unrealized,
                                 asset_type="crypto",
+                                total_amount_invested=invested,
                             )
                         )
-                    except (ValueError, KeyError, ZeroDivisionError) as e:
+                    except (asyncio.TimeoutError, TypeError, ValueError, KeyError, ZeroDivisionError) as e:
                         logger.warning(f"Skipping malformed crypto position: {e}")
                         continue
         except Exception as e:

@@ -117,27 +117,81 @@ def _fetch_price(symbol: str, api_key: str) -> Optional[float]:
     return None
 
 
-# Known ETF symbols for basic asset_type classification.
-_ETF_SYMBOLS = {
-    "QQQ",
-    "VOO",
-    "VTI",
-    "VYM",
-    "VXUS",
-    "XLF",
-    "XAR",
-    "SOXX",
-    "IYT",
-    "IBIT",
-    "GLD",
-    "VNQ",
-    "SPY",
-    "IWM",
-    "DIA",
-    "EEM",
-    "TLT",
-    "HYG",
-}
+# US-listed ETF tickers for ``asset_type`` classification in CSV export aggregation.
+# Curated (~614): major issuers, sectors, bonds, international, thematic, leveraged.
+# Exhaustive coverage would require 3000+ US-listed ETFs or a security-master API;
+# symbols not in this set are labeled ``stock`` until you extend the list.
+_ETF_SYMBOLS: frozenset[str] = frozenset({
+    "AAA", "AADR", "AAXJ", "ACES", "ACIM", "ACIO", "ACWI", "ACWV", "ACWX", "AIA",
+    "AIQ", "AIRR", "AIVI", "AIVL", "ALTL", "AMJ", "AMLP", "AMOM", "AMZA", "ANGL",
+    "AOA", "AOK", "AOM", "AOR", "ARGT", "ARKB", "ARKG", "ARKK", "ARKQ", "ARKW",
+    "ARKX", "ASHR", "ASHS", "ATMP", "AUGM", "AVDE", "AVEM", "AVIG", "AVLV", "AVSC",
+    "AVUS", "AVUV", "AWAY", "BAB", "BAL", "BATT", "BBAX", "BBCA", "BBJP", "BBUS",
+    "BCD", "BCI", "BDRY", "BETZ", "BFIT", "BIB", "BIL", "BINC", "BITB", "BITI",
+    "BITO", "BIV", "BIZD", "BJK", "BKLN", "BLOK", "BLV", "BND", "BNDW", "BNDX",
+    "BOIL", "BOTZ", "BRZU", "BTEC", "BUG", "CANE", "CARZ", "CCOR", "CDC", "CDL",
+    "CEFS", "CFA", "CIBR", "CLOU", "CNXT", "COM", "COMT", "COPX", "CORN", "CPER",
+    "CRAK", "CRBN", "CURE", "CVY", "CWB", "CWBC", "CWI", "DBA", "DBC", "DBEF",
+    "DBJP", "DBO", "DEFA", "DEM", "DES", "DEUS", "DEW", "DFAC", "DFAE", "DFAI",
+    "DFAR", "DFAS", "DFAT", "DFAU", "DFAX", "DFEA", "DFEM", "DFEV", "DFUS", "DFUV",
+    "DGRO", "DGS", "DIA", "DIHP", "DIM", "DIVO", "DLS", "DNL", "DRIP", "DRIV",
+    "DSI", "DTD", "DTH", "DVY", "DWAS", "DWX", "DXJ", "EBND", "ECH", "EDEN",
+    "EDIV", "EDV", "EEM", "EEMS", "EEMV", "EES", "EEV", "EFA", "EFAD", "EFAV",
+    "EFG", "EFIV", "EIDO", "EINC", "EIRL", "EIS", "EMB", "EMLC", "EMMF", "EMQQ",
+    "ENOR", "ENZL", "EPHE", "EPI", "EPOL", "EPS", "EQAL", "ESGD", "ESGE", "ESGU",
+    "ESGV", "ESML", "ESPO", "ETHA", "ETHE", "EUFN", "EUFX", "EWA", "EWC", "EWD",
+    "EWG", "EWH", "EWI", "EWJ", "EWK", "EWL", "EWM", "EWN", "EWP", "EWQ",
+    "EWS", "EWT", "EWUS", "EWW", "EWY", "EWZ", "EWZS", "EXI", "EZA", "EZBC",
+    "EZU", "FAD", "FAS", "FAZ", "FBCG", "FBND", "FBTC", "FCVT", "FDN", "FDNI",
+    "FEM", "FENY", "FEX", "FEZ", "FFEB", "FGD", "FGM", "FHA", "FIW", "FLAX",
+    "FLEX", "FLOT", "FLRN", "FM", "FMQQ", "FMX", "FNDA", "FNDC", "FNDE", "FNGD",
+    "FNGU", "FNRG", "FPE", "FPX", "FRDM", "FREL", "FRN", "FSTA", "FTCS", "FTEC",
+    "FTGC", "FTLS", "FV", "FVAL", "FXD", "FXI", "FXL", "FXY", "GAMR", "GBIL",
+    "GBTC", "GDE", "GDX", "GDXJ", "GEM", "GHYB", "GLD", "GLDM", "GLIN", "GLL",
+    "GLTR", "GMET", "GMOM", "GOAU", "GOEX", "GOVT", "GREK", "GSG", "GUNR", "GUSH",
+    "GVI", "GVIP", "GWX", "HACK", "HAIL", "HAP", "HAUZ", "HAWX", "HDV", "HEFA",
+    "HEWJ", "HEZU", "HIBL", "HIBS", "HYDW", "HYEM", "HYG", "HYLB", "HYLS", "HYMB",
+    "HYS", "IAGG", "IAI", "IAK", "IAT", "IAUM", "IBB", "IBIT", "IBND", "IBO",
+    "IBUY", "ICLN", "IDEV", "IDX", "IEF", "IEFA", "IEI", "IEMG", "IEUR", "IEV",
+    "IGF", "IGIB", "IGM", "IGOV", "IGSB", "IGV", "IHE", "IHF", "IHI", "IJH",
+    "IJK", "IJR", "INCO", "INDA", "INDL", "INDY", "IQLT", "ITB", "ITM", "ITOT",
+    "IUSB", "IVOG", "IVOL", "IVOO", "IVV", "IVW", "IWB", "IWC", "IWD", "IWF",
+    "IWM", "IWN", "IWO", "IWP", "IWR", "IWS", "IWV", "IWX", "IWY", "IXUS",
+    "IYT", "IYY", "IYZ", "JEPI", "JEPQ", "JPME", "JPST", "KBA", "KBE", "KBWY",
+    "KOLD", "KRE", "KSA", "KWEB", "LABD", "LABU", "LIT", "LQD", "MBB", "MCHI",
+    "MDY", "MJ", "MORT", "MSOS", "MTUM", "MUB", "NAIL", "NEAR", "NOBL", "NORW",
+    "NUSI", "OEF", "OIH", "OUNZ", "PALL", "PAVE", "PBW", "PCEF", "PCY", "PDBC",
+    "PFF", "PFFD", "PFFR", "PFXF", "PGJ", "PHB", "PICK", "PILL", "PIN", "PLTM",
+    "PPLT", "PSIL", "PSQ", "PST", "PZA", "QAI", "QCLN", "QID", "QLD", "QQEW",
+    "QQQ", "QQQE", "QQQM", "QTEC", "QUAL", "QYLD", "REMX", "RING", "RSP", "RSPA",
+    "RSPM", "RWL", "RWR", "RYLD", "SATO", "SCHB", "SCHC", "SCHD", "SCHE", "SCHF",
+    "SCHG", "SCHH", "SCHJ", "SCHM", "SCHP", "SCHQ", "SCHV", "SCHX", "SCHY", "SCHZ",
+    "SDOW", "SDY", "SFY", "SGOL", "SH", "SHY", "SHYG", "SIL", "SILJ", "SJNK",
+    "SKF", "SLV", "SMBS", "SMH", "SMIN", "SNSR", "SOXL", "SOXS", "SOXX", "SPAB",
+    "SPDW", "SPEM", "SPEU", "SPGP", "SPHY", "SPLB", "SPLG", "SPLV", "SPMO", "SPSB",
+    "SPSM", "SPTI", "SPTL", "SPTM", "SPUS", "SPXL", "SPXS", "SPXU", "SPY", "SPYD",
+    "SPYG", "SPYV", "SQQQ", "SRLN", "SRVR", "SSO", "STIP", "SUB", "TAN", "TBT",
+    "TECL", "TECS", "TFI", "TFLO", "THD", "THNQ", "TIP", "TLH", "TLT", "TMF",
+    "TMV", "TNA", "TQQQ", "TTT", "TUR", "TWM", "TZA", "UBT", "UCO", "UDOW",
+    "UGA", "UGL", "UNG", "UPRO", "UPW", "URA", "URNM", "USCI", "USFR", "USMV",
+    "USO", "UUP", "UWM", "UYG", "VCIT", "VCLT", "VCR", "VCSH", "VDC", "VDE",
+    "VEA", "VEU", "VFH", "VFMO", "VGIT", "VGK", "VGLT", "VGSH", "VGT", "VHT",
+    "VIG", "VIS", "VLU", "VMBS", "VNQ", "VNQI", "VO", "VOE", "VONG", "VONV",
+    "VOO", "VOOG", "VOOV", "VOT", "VOX", "VPL", "VPU", "VRP", "VSGX", "VT",
+    "VTEB", "VTI", "VTIP", "VTV", "VTWG", "VTWO", "VTWV", "VUG", "VUSB", "VWO",
+    "VWOB", "VXF", "VXUS", "VYM", "VYMI", "WCLD", "WEAT", "WEBL", "WEBS", "XAR",
+    "XBI", "XES", "XHB", "XHE", "XHS", "XLB", "XLC", "XLE", "XLF", "XLI",
+    "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY", "XME", "XMLV", "XOP", "XPH",
+    "XRT", "XSD", "XSLV", "XSMO", "XSVM", "XSW", "XTN", "XWEB", "XYLD", "YANG",
+    "YINN", "YOLO", "ZROZ", "ZSL",
+})
+
+
+def classify_symbol_asset_type(symbol: str, default: str = "stock") -> str:
+    normalized = (symbol or "").strip().upper()
+    if normalized in _ETF_SYMBOLS:
+        return "etf"
+    return default
 
 
 def aggregate_export(
@@ -329,7 +383,7 @@ def aggregate_export(
             if current_price > 0
             else 0.0
         )
-        asset_type = "etf" if pos.symbol in _ETF_SYMBOLS else "stock"
+        asset_type = classify_symbol_asset_type(pos.symbol)
 
         result_positions.append(
             PositionData(

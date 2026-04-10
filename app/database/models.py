@@ -201,3 +201,20 @@ class PortfolioSnapshot(Base):
     broker_connection = relationship(
         "BrokerConnection", back_populates="portfolio_snapshots"
     )
+
+
+class SymbolMetadata(Base):
+    """Persistent cache for Finnhub symbol profile lookups.
+
+    Keyed by ticker symbol — only called once per symbol until the row
+    goes stale (checked via ``updated_at``).
+    """
+    __tablename__ = "symbol_metadata"
+
+    symbol = Column(String(20), primary_key=True)
+    sector = Column(String(100), nullable=True)
+    industry = Column(String(100), nullable=True)
+    country = Column(String(60), nullable=True)
+    market_cap = Column(Float, default=0.0)
+    market_cap_category = Column(String(20), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

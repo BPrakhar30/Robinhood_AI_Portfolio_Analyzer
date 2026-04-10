@@ -108,6 +108,30 @@ class CSVTemplateResponse(BaseModel):
     required_columns: list[str]
 
 
+class AllocationHolding(BaseModel):
+    symbol: str
+    name: str
+    asset_type: str
+    market_value: float
+    percent: float
+
+
+class AllocationBreakdown(BaseModel):
+    label: str
+    value: float
+    percent: float
+    holdings: list[AllocationHolding] = []
+
+
+class AllocationResponse(BaseModel):
+    total_value: float
+    by_sector: list[AllocationBreakdown]
+    by_asset_class: list[AllocationBreakdown]
+    by_geography: list[AllocationBreakdown]
+    by_market_cap: list[AllocationBreakdown]
+    by_risk_level: list[AllocationBreakdown]
+
+
 class APIResponse(BaseModel):
     """Standard API response wrapper per developer guidelines."""
 
