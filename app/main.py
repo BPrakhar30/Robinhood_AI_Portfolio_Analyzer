@@ -22,6 +22,7 @@ from app.database.engine import init_db
 from app.auth.router import router as auth_router
 from app.broker_integrations.router import router as broker_router
 from app.portfolio_engine.router import router as portfolio_router
+from app.markets.router import router as markets_router
 from app.utils.exceptions import AppException
 from app.utils.logging import get_logger
 
@@ -108,6 +109,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(broker_router, prefix="/api/v1")
 app.include_router(portfolio_router, prefix="/api/v1")
+app.include_router(markets_router, prefix="/api/v1")
 
 
 # ──────────────────────────────── Health & Status ────────────────────────────────
