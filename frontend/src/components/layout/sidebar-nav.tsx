@@ -23,6 +23,7 @@ import {
   Activity,
   Bell,
   FlaskConical,
+  Newspaper,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Bot,
   Activity,
   Bell,
+  Newspaper,
   FlaskConical,
 };
 
@@ -54,6 +56,7 @@ const NAV_ITEMS = [
   { label: "Transactions", href: "/transactions", icon: "ArrowLeftRight" },
   { label: "AI Assistant", href: "/assistant", icon: "Bot" },
   { label: "Health Score", href: "/health", icon: "Activity" },
+  { label: "Markets", href: "/markets", icon: "Newspaper" },
   { label: "Alerts", href: "/alerts", icon: "Bell" },
   { label: "Summary", href: "/summary", icon: "Activity" },
   { label: "Settings", href: "/settings", icon: "Settings" },
