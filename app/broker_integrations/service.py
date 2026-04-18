@@ -1,16 +1,15 @@
-"""
-Broker orchestration: adapter selection, encrypted token persistence, and portfolio sync into ORM models.
+"""Broker orchestration: adapter selection, encrypted tokens, ORM sync.
 
-``_get_adapter`` is the factory for broker-specific implementations. ``_upsert_connection`` merges on
-(user, broker_type) to avoid duplicate rows. ``_sync_portfolio`` deletes then re-inserts positions
-and transactions for the connection so stale symbols cannot linger. Tokens are sealed at rest with
-the app Fernet encryptor. Robinhood re-sync is rejected intentionally—robin_stocks session tokens
-expire quickly and cannot be reliably refreshed from DB alone.
-
-Added: 2026-04-03
+``_upsert_connection`` merges on (user, broker_type). ``_sync_portfolio``
+replaces positions/transactions wholesale so stale symbols don't linger.
+Tokens are sealed with the app Fernet encryptor. Robinhood re-sync is
+rejected: ``robin_stocks`` session tokens aren't reliably refreshable
+from the DB alone.
 """
+
 from datetime import datetime, timezone
 from typing import Optional
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -248,7 +247,7 @@ class BrokerService:
             extra={
                 "event": "broker_disconnected",
                 "broker": connection.broker_type.value,
-                "user_id": user.id,
+                "user_id": str(user.id),
             },
         )
         return True
@@ -267,7 +266,9 @@ class BrokerService:
         connection = result.scalar_one_or_none()
 
         if not connection:
-            raise BrokerConnectionError("Connection not found", details={"connection_id": connection_id})
+            raise BrokerConnectionError(
+                "Connection not found", details={"connection_id": connection_id}
+            )
 
         broker = connection.broker_type.value
         await self._session.delete(connection)
@@ -275,7 +276,11 @@ class BrokerService:
 
         logger.info(
             "Broker connection and data deleted",
-            extra={"event": "broker_deleted", "broker": broker, "user_id": user.id},
+            extra={
+                "event": "broker_deleted",
+                "broker": broker,
+                "user_id": str(user.id),
+            },
         )
         return True
 
@@ -355,7 +360,8 @@ class BrokerService:
                     adapter.set_access_token(token)
                 except Exception:
                     raise PortfolioSyncError(
-                        "Robinhood session expired. Please disconnect and reconnect your account.")
+                        "Robinhood session expired. Please disconnect and reconnect your account."
+                    )
 
             elif connection.broker_type == BrokerType.PLAID:
                 if not connection.access_token_encrypted:
@@ -385,7 +391,7 @@ class BrokerService:
 
     async def _upsert_connection(
         self,
-        user_id: int,
+        user_id: UUID,
         broker_type: BrokerType,
         access_token: str = "",
         refresh_token: str = "",
@@ -432,7 +438,7 @@ class BrokerService:
             extra={
                 "event": "connection_saved",
                 "broker": broker_type.value,
-                "user_id": user_id,
+                "user_id": str(user_id),
             },
         )
         return connection
@@ -441,7 +447,7 @@ class BrokerService:
         self,
         adapter: BrokerInterface,
         connection: BrokerConnection,
-        user_id: int,
+        user_id: UUID,
     ):
         """
         Pull adapter snapshots into SQLAlchemy. Full replace (delete then insert) per connection

@@ -1,8 +1,10 @@
 export interface ChatMessage {
+  // String for uniform keying: server id for persisted, temp id for streaming.
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  toolsUsed?: string[];
 }
 
 export interface ChatSession {

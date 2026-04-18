@@ -1,16 +1,11 @@
 "use client";
 /**
  * React Query hooks for auth: current user, login, register, verify, resend, logout.
- *
- * - `useRegister` navigates to `/verify-email` on success.
- * - `useLogin` invalidates `["auth"]` queries and redirects to `/dashboard`.
- * - `useResendVerification` is shared by the login and registration flows.
- *
- * Added: 2026-04-03
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "./store";
+import { useChatStore } from "@/features/chat/store";
 import {
   loginUser,
   registerUser,
@@ -34,7 +29,7 @@ export function useCurrentUser() {
         setUser(user);
         return user;
       } catch {
-        // Unauthenticated or network failure: stop blocking the shell without throwing.
+        // Unauthenticated / network failure: unblock the shell.
         setLoading(false);
         return null;
       }
@@ -102,6 +97,8 @@ export function useLogout() {
 
   return () => {
     logout();
+    // Wipe per-user caches immediately so nothing leaks into the next sign-in.
+    useChatStore.getState().reset();
     queryClient.clear();
     router.push("/login");
   };
@@ -134,6 +131,7 @@ export function useDeleteAccount() {
     mutationFn: deleteAccount,
     onSuccess: () => {
       logout();
+      useChatStore.getState().reset();
       queryClient.clear();
       router.push("/login");
     },

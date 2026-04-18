@@ -1,33 +1,27 @@
-"""
-Robinhood broker adapter — two-step MFA flow + data fetching via ``robin_stocks``.
+"""Robinhood broker adapter: two-step MFA + data fetching via ``robin_stocks``.
 
-The login flow uses ``robin_stocks``' internal HTTP helpers (which carry the correct
-API-version header, User-Agent, TLS session, and cookies) but controls the
-verification-workflow lifecycle manually so we never hit the blocking ``input()``
-call inside ``rh.login()``.
+Uses ``robin_stocks``' internal HTTP helpers (correct API-version header,
+User-Agent, TLS session, cookies) but drives the verification workflow
+manually so we avoid the blocking ``input()`` inside ``rh.login()``.
 
-Robinhood's current auth sequence:
-
-  1. POST ``/oauth2/token/`` with credentials
-     → ``access_token`` (no MFA) **or** ``verification_workflow``
-  2. POST ``/pathfinder/user_machine/`` with workflow_id → ``machine_id``
-  3. GET  ``/pathfinder/inquiries/{machine_id}/user_view/`` → ``sheriff_challenge``
+Auth sequence:
+  1. POST /oauth2/token/ → access_token OR verification_workflow
+  2. POST /pathfinder/user_machine/ → machine_id
+  3. GET  /pathfinder/inquiries/{machine_id}/user_view/ → sheriff_challenge
      (type = "sms" | "email" | "prompt")
-  4. For sms/email: POST ``/challenge/{id}/respond/`` with user code
-     For prompt: poll ``/push/{id}/get_prompts_status/`` until validated
-  5. POST ``/pathfinder/inquiries/{machine_id}/user_view/`` with continue → approved
-  6. Retry ``/oauth2/token/`` → ``access_token``
+  4. sms/email: POST /challenge/{id}/respond/ with user code.
+     prompt: poll /push/{id}/get_prompts_status/ until validated.
+  5. POST /pathfinder/inquiries/{machine_id}/user_view/ with continue
+  6. Retry /oauth2/token/ → access_token
 
-``initiate_login`` covers steps 1-3 and stores state.
-``complete_mfa``   covers steps 4-6 and returns the tokens.
-
-Added: 2026-04-03
-Updated: 2026-04-06 — two-step MFA using robin_stocks internals
+``initiate_login`` covers 1-3 (stores state). ``complete_mfa`` covers 4-6.
 """
+
 import asyncio
 import time as _time
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+from uuid import UUID
 
 import robin_stocks.robinhood as rh
 from robin_stocks.robinhood.helper import (
@@ -65,15 +59,18 @@ _INQUIRIES_URL = "https://api.robinhood.com/pathfinder/inquiries/{mid}/user_view
 _CHALLENGE_URL = "https://api.robinhood.com/challenge/{cid}/respond/"
 _PUSH_URL = "https://api.robinhood.com/push/{cid}/get_prompts_status/"
 
-# Pending MFA states keyed by user_id
-_pending_challenges: dict[int, dict] = {}
+# Pending MFA states keyed by user_id (UUID)
+_pending_challenges: dict[UUID, dict] = {}
 _CHALLENGE_TTL = timedelta(minutes=5)
 
 
 def _cleanup_expired():
     now = datetime.now(timezone.utc)
-    expired = [uid for uid, s in _pending_challenges.items()
-               if now - s["created_at"] > _CHALLENGE_TTL]
+    expired = [
+        uid
+        for uid, s in _pending_challenges.items()
+        if now - s["created_at"] > _CHALLENGE_TTL
+    ]
     for uid in expired:
         _pending_challenges.pop(uid, None)
 
@@ -97,7 +94,7 @@ class RobinhoodAdapter(BrokerInterface):
     # ────────────── Two-step MFA flow ──────────────
 
     @staticmethod
-    async def initiate_login(user_id: int, username: str, password: str) -> dict:
+    async def initiate_login(user_id: UUID, username: str, password: str) -> dict:
         """
         Step 1: Send credentials → if MFA needed, walk through the pathfinder
         flow until we know the challenge type, then return to the caller.
@@ -148,7 +145,9 @@ class RobinhoodAdapter(BrokerInterface):
                 )
 
                 if not machine_data or "id" not in machine_data:
-                    return {"_error": "Failed to initialize verification. Please try again."}
+                    return {
+                        "_error": "Failed to initialize verification. Please try again."
+                    }
 
                 machine_id = machine_data["id"]
                 inq_url = _INQUIRIES_URL.format(mid=machine_id)
@@ -158,9 +157,11 @@ class RobinhoodAdapter(BrokerInterface):
                 while _time.time() - t0 < 30:
                     _time.sleep(3)
                     resp = _rh_get(inq_url)
-                    if (resp
-                            and "context" in resp
-                            and "sheriff_challenge" in resp["context"]):
+                    if (
+                        resp
+                        and "context" in resp
+                        and "sheriff_challenge" in resp["context"]
+                    ):
                         c = resp["context"]["sheriff_challenge"]
                         challenge_info = {
                             "type": c["type"],
@@ -192,18 +193,20 @@ class RobinhoodAdapter(BrokerInterface):
             detail = data.get("detail", "Login failed — check your credentials.")
             return {"_error": str(detail)}
 
-        logger.info("Robinhood login initiated",
-                     extra={"event": "rh_initiate", "user_id": user_id})
+        logger.info(
+            "Robinhood login initiated",
+            extra={"event": "rh_initiate", "user_id": str(user_id)},
+        )
 
         result = await asyncio.get_event_loop().run_in_executor(None, _step1)
 
         if "_error" in result:
             raise BrokerAuthenticationError(
-                result["_error"], details={"broker": "robinhood"})
+                result["_error"], details={"broker": "robinhood"}
+            )
 
         if result["status"] == "authenticated":
-            logger.info("Robinhood login OK (no MFA)",
-                         extra={"event": "rh_auth_ok"})
+            logger.info("Robinhood login OK (no MFA)", extra={"event": "rh_auth_ok"})
             return {
                 "status": "authenticated",
                 "access_token": result["access_token"],
@@ -222,8 +225,9 @@ class RobinhoodAdapter(BrokerInterface):
                 "challenge_id": ch["id"],
                 "created_at": datetime.now(timezone.utc),
             }
-            logger.info("Robinhood MFA required",
-                         extra={"event": "rh_mfa", "type": ch["type"]})
+            logger.info(
+                "Robinhood MFA required", extra={"event": "rh_mfa", "type": ch["type"]}
+            )
             return {"status": "mfa_required", "mfa_type": ch["type"]}
 
         if result["status"] == "mfa_required_totp":
@@ -233,15 +237,15 @@ class RobinhoodAdapter(BrokerInterface):
                 "payload": result["payload"],
                 "created_at": datetime.now(timezone.utc),
             }
-            logger.info("Robinhood TOTP MFA required",
-                         extra={"event": "rh_mfa_totp"})
+            logger.info("Robinhood TOTP MFA required", extra={"event": "rh_mfa_totp"})
             return {"status": "mfa_required", "mfa_type": "app"}
 
         raise BrokerAuthenticationError(
-            "Unexpected login response.", details={"broker": "robinhood"})
+            "Unexpected login response.", details={"broker": "robinhood"}
+        )
 
     @staticmethod
-    async def complete_mfa(user_id: int, mfa_code: str) -> dict:
+    async def complete_mfa(user_id: UUID, mfa_code: str) -> dict:
         """
         Step 2: Complete the pending challenge, finalize the workflow,
         and retry the login to obtain an access token.
@@ -250,12 +254,14 @@ class RobinhoodAdapter(BrokerInterface):
         if not state:
             raise BrokerAuthenticationError(
                 "No pending MFA challenge. Please start the login process again.",
-                details={"broker": "robinhood"})
+                details={"broker": "robinhood"},
+            )
 
         if datetime.now(timezone.utc) - state["created_at"] > _CHALLENGE_TTL:
             raise BrokerAuthenticationError(
                 "MFA challenge expired. Please start the login process again.",
-                details={"broker": "robinhood"})
+                details={"broker": "robinhood"},
+            )
 
         def _step2():
             flow = state.get("flow", "verification_workflow")
@@ -283,8 +289,10 @@ class RobinhoodAdapter(BrokerInterface):
                     payload={"response": mfa_code},
                 )
                 if not resp or resp.get("status") != "validated":
-                    return {"_retry": True,
-                            "_error": "Invalid verification code. Please try again."}
+                    return {
+                        "_retry": True,
+                        "_error": "Invalid verification code. Please try again.",
+                    }
 
             # 4b. Push notification → poll until approved (30s window)
             elif challenge_type == "prompt":
@@ -298,8 +306,10 @@ class RobinhoodAdapter(BrokerInterface):
                         break
                     _time.sleep(2)
                 if not validated:
-                    return {"_retry": True,
-                            "_error": "Push notification was not approved in time. Please try again."}
+                    return {
+                        "_retry": True,
+                        "_error": "Push notification was not approved in time. Please try again.",
+                    }
 
             # 5. Finalize the workflow
             inq_url = _INQUIRIES_URL.format(mid=machine_id)
@@ -336,8 +346,10 @@ class RobinhoodAdapter(BrokerInterface):
 
             return {"_error": "Login failed after verification. Please start over."}
 
-        logger.info("Robinhood MFA completion started",
-                     extra={"event": "rh_mfa_complete", "user_id": user_id})
+        logger.info(
+            "Robinhood MFA completion started",
+            extra={"event": "rh_mfa_complete", "user_id": str(user_id)},
+        )
 
         result = await asyncio.get_event_loop().run_in_executor(None, _step2)
 
@@ -345,14 +357,18 @@ class RobinhoodAdapter(BrokerInterface):
             state["created_at"] = datetime.now(timezone.utc)
             _pending_challenges[user_id] = state
             raise BrokerAuthenticationError(
-                result["_error"], details={"broker": "robinhood"})
+                result["_error"], details={"broker": "robinhood"}
+            )
 
         if "_error" in result:
             raise BrokerAuthenticationError(
-                result["_error"], details={"broker": "robinhood"})
+                result["_error"], details={"broker": "robinhood"}
+            )
 
-        logger.info("Robinhood MFA completed",
-                     extra={"event": "rh_mfa_ok", "user_id": user_id})
+        logger.info(
+            "Robinhood MFA completed",
+            extra={"event": "rh_mfa_ok", "user_id": str(user_id)},
+        )
         return {
             "status": "connected",
             "access_token": result["access_token"],
@@ -369,8 +385,8 @@ class RobinhoodAdapter(BrokerInterface):
 
         if not username or not password:
             raise BrokerAuthenticationError(
-                "Username and password are required",
-                details={"broker": "robinhood"})
+                "Username and password are required", details={"broker": "robinhood"}
+            )
 
         logger.info(
             "Robinhood authentication started",
@@ -391,14 +407,16 @@ class RobinhoodAdapter(BrokerInterface):
 
             login_result = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
-                    None, lambda: rh.login(**login_kwargs)),
+                    None, lambda: rh.login(**login_kwargs)
+                ),
                 timeout=TIMEOUT_SECONDS,
             )
 
             if not login_result or "access_token" not in login_result:
                 raise BrokerAuthenticationError(
                     "Robinhood login failed — invalid credentials or MFA required.",
-                    details={"broker": "robinhood"})
+                    details={"broker": "robinhood"},
+                )
 
             self._connected = True
             self._username = username
@@ -418,15 +436,18 @@ class RobinhoodAdapter(BrokerInterface):
             )
             raise BrokerTimeoutError(
                 "Robinhood authentication timed out",
-                details={"broker": "robinhood", "timeout_seconds": TIMEOUT_SECONDS})
+                details={"broker": "robinhood", "timeout_seconds": TIMEOUT_SECONDS},
+            )
         except BrokerAuthenticationError:
             raise
         except Exception as e:
-            logger.error(f"Robinhood authentication error: {e}",
-                         extra={"event": "auth_error", "broker": "robinhood"})
+            logger.error(
+                f"Robinhood authentication error: {e}",
+                extra={"event": "auth_error", "broker": "robinhood"},
+            )
             raise BrokerAuthenticationError(
-                f"Robinhood authentication failed: {e}",
-                details={"broker": "robinhood"})
+                f"Robinhood authentication failed: {e}", details={"broker": "robinhood"}
+            )
 
     def set_access_token(self, access_token: str):
         """Bootstrap robin_stocks session with an existing token for data fetching."""
@@ -442,7 +463,8 @@ class RobinhoodAdapter(BrokerInterface):
         try:
             stock_positions = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
-                    None, lambda: rh.account.build_holdings()),
+                    None, lambda: rh.account.build_holdings()
+                ),
                 timeout=TIMEOUT_SECONDS,
             )
 
@@ -457,7 +479,9 @@ class RobinhoodAdapter(BrokerInterface):
                         equity = float(data.get("equity", 0))
                         invested = avg_cost * quantity
                         unrealized = equity - (avg_cost * quantity)
-                        raw_asset_type = str(data.get("type", "stock")).strip().lower() or "stock"
+                        raw_asset_type = (
+                            str(data.get("type", "stock")).strip().lower() or "stock"
+                        )
 
                         positions.append(
                             PositionData(
@@ -506,7 +530,8 @@ class RobinhoodAdapter(BrokerInterface):
         try:
             crypto_positions = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
-                    None, lambda: rh.crypto.get_crypto_positions()),
+                    None, lambda: rh.crypto.get_crypto_positions()
+                ),
                 timeout=TIMEOUT_SECONDS,
             )
             if crypto_positions:
@@ -517,11 +542,7 @@ class RobinhoodAdapter(BrokerInterface):
                             continue
                         cost_bases = crypto.get("cost_bases", [{}])
                         invested = float(cost_bases[0].get("direct_cost_basis", 0) or 0)
-                        avg_cost = (
-                            invested / quantity
-                            if quantity
-                            else 0
-                        )
+                        avg_cost = invested / quantity if quantity else 0
                         symbol = crypto.get("currency", {}).get("code", "UNKNOWN")
                         quote = await asyncio.wait_for(
                             asyncio.get_event_loop().run_in_executor(
@@ -549,7 +570,13 @@ class RobinhoodAdapter(BrokerInterface):
                                 total_amount_invested=invested,
                             )
                         )
-                    except (asyncio.TimeoutError, TypeError, ValueError, KeyError, ZeroDivisionError) as e:
+                    except (
+                        asyncio.TimeoutError,
+                        TypeError,
+                        ValueError,
+                        KeyError,
+                        ZeroDivisionError,
+                    ) as e:
                         logger.warning(f"Skipping malformed crypto position: {e}")
                         continue
         except Exception as e:
@@ -564,7 +591,8 @@ class RobinhoodAdapter(BrokerInterface):
         try:
             orders = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
-                    None, lambda: rh.orders.get_all_stock_orders()),
+                    None, lambda: rh.orders.get_all_stock_orders()
+                ),
                 timeout=TIMEOUT_SECONDS,
             )
             if not orders:
@@ -629,8 +657,7 @@ class RobinhoodAdapter(BrokerInterface):
             )
 
         except asyncio.TimeoutError:
-            raise BrokerTimeoutError(
-                "Timed out fetching transactions from Robinhood")
+            raise BrokerTimeoutError("Timed out fetching transactions from Robinhood")
         except (BrokerTimeoutError, BrokerConnectionError):
             raise
         except Exception as e:
@@ -647,7 +674,8 @@ class RobinhoodAdapter(BrokerInterface):
         try:
             profile = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
-                    None, lambda: rh.profiles.load_account_profile()),
+                    None, lambda: rh.profiles.load_account_profile()
+                ),
                 timeout=TIMEOUT_SECONDS,
             )
             if not profile:
@@ -665,8 +693,7 @@ class RobinhoodAdapter(BrokerInterface):
         except (BrokerTimeoutError, BrokerConnectionError):
             raise
         except Exception as e:
-            raise BrokerConnectionError(
-                f"Failed to fetch Robinhood cash balance: {e}")
+            raise BrokerConnectionError(f"Failed to fetch Robinhood cash balance: {e}")
 
     async def get_account_summary(self) -> AccountSummary:
         self._ensure_connected()
@@ -679,15 +706,18 @@ class RobinhoodAdapter(BrokerInterface):
             total_realized = sum(p.realized_gains for p in positions)
             profile = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(
-                    None, lambda: rh.profiles.load_account_profile()),
+                    None, lambda: rh.profiles.load_account_profile()
+                ),
                 timeout=TIMEOUT_SECONDS,
             )
             buying_power = (
                 float(profile.get("buying_power", 0) or 0) if profile else cash
             )
             return AccountSummary(
-                total_value=total_value, cash_balance=cash,
-                positions_count=len(positions), buying_power=buying_power,
+                total_value=total_value,
+                cash_balance=cash,
+                positions_count=len(positions),
+                buying_power=buying_power,
                 total_realized_gains=total_realized,
                 total_unrealized_gains=total_unrealized,
             )
@@ -721,4 +751,5 @@ class RobinhoodAdapter(BrokerInterface):
         if not self._connected:
             raise BrokerAuthenticationError(
                 "Not authenticated with Robinhood. Call authenticate() first.",
-                details={"broker": "robinhood"})
+                details={"broker": "robinhood"},
+            )

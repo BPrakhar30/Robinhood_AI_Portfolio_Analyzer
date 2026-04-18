@@ -6,6 +6,7 @@ Three detection systems:
   B) Single-stock concentration risk (> 10% yellow, > 20% red)
   C) ETF overlap detection (pairwise holdings intersection)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -40,19 +41,21 @@ def detect_sector_overweight(
         else:
             severity = "low"
 
-        alerts.append({
-            "id": _alert_id("sector", sector),
-            "severity": severity,
-            "category": "sector_overweight",
-            "title": f"{sector} overweight",
-            "description": (
-                f"Your {sector} allocation is {user_pct:.1f}%, "
-                f"which is {diff:.1f}pp above the S&P 500 benchmark ({bench_pct:.1f}%). "
-                f"This concentrates your risk around {sector.lower()} sector volatility."
-            ),
-            "metric": f"{user_pct:.1f}%",
-            "threshold": f"Benchmark: {bench_pct:.1f}%",
-        })
+        alerts.append(
+            {
+                "id": _alert_id("sector", sector),
+                "severity": severity,
+                "category": "sector_overweight",
+                "title": f"{sector} overweight",
+                "description": (
+                    f"Your {sector} allocation is {user_pct:.1f}%, "
+                    f"which is {diff:.1f}pp above the S&P 500 benchmark ({bench_pct:.1f}%). "
+                    f"This concentrates your risk around {sector.lower()} sector volatility."
+                ),
+                "metric": f"{user_pct:.1f}%",
+                "threshold": f"Benchmark: {bench_pct:.1f}%",
+            }
+        )
 
     return alerts
 
@@ -79,18 +82,20 @@ def detect_single_stock_concentration(
         severity = "high" if pct >= red_threshold else "medium"
         display = name if name and name != symbol else symbol
 
-        alerts.append({
-            "id": _alert_id("conc", symbol),
-            "severity": severity,
-            "category": "concentration",
-            "title": f"{display} concentration",
-            "description": (
-                f"{display} ({symbol}) represents {pct:.1f}% of your portfolio. "
-                f"{'This is a significant single-stock risk.' if severity == 'high' else 'Consider whether this level of exposure is intentional.'}"
-            ),
-            "metric": f"{pct:.1f}%",
-            "threshold": f"{'> ' + str(int(red_threshold)) + '% (high)' if severity == 'high' else '> ' + str(int(yellow_threshold)) + '% (moderate)'}",
-        })
+        alerts.append(
+            {
+                "id": _alert_id("conc", symbol),
+                "severity": severity,
+                "category": "concentration",
+                "title": f"{display} concentration",
+                "description": (
+                    f"{display} ({symbol}) represents {pct:.1f}% of your portfolio. "
+                    f"{'This is a significant single-stock risk.' if severity == 'high' else 'Consider whether this level of exposure is intentional.'}"
+                ),
+                "metric": f"{pct:.1f}%",
+                "threshold": f"{'> ' + str(int(red_threshold)) + '% (high)' if severity == 'high' else '> ' + str(int(yellow_threshold)) + '% (moderate)'}",
+            }
+        )
 
     return alerts
 
@@ -120,21 +125,25 @@ def detect_etf_overlap(
 
         combined_pct = 0
         if total_value > 0:
-            combined_pct = (etf_values.get(a, 0) + etf_values.get(b, 0)) / total_value * 100
+            combined_pct = (
+                (etf_values.get(a, 0) + etf_values.get(b, 0)) / total_value * 100
+            )
 
-        alerts.append({
-            "id": _alert_id("overlap", a, b),
-            "severity": severity,
-            "category": "etf_overlap",
-            "title": f"{a}/{b} overlap",
-            "description": (
-                f"{a} and {b} share ~{ov:.0f}% of their top holdings. "
-                f"Together they make up {combined_pct:.1f}% of your portfolio. "
-                f"{'Consider consolidating into a single fund.' if severity == 'high' else 'Monitor this redundancy.'}"
-            ),
-            "metric": f"{ov:.0f}% overlap",
-            "threshold": "Combined holdings overlap",
-        })
+        alerts.append(
+            {
+                "id": _alert_id("overlap", a, b),
+                "severity": severity,
+                "category": "etf_overlap",
+                "title": f"{a}/{b} overlap",
+                "description": (
+                    f"{a} and {b} share ~{ov:.0f}% of their top holdings. "
+                    f"Together they make up {combined_pct:.1f}% of your portfolio. "
+                    f"{'Consider consolidating into a single fund.' if severity == 'high' else 'Monitor this redundancy.'}"
+                ),
+                "metric": f"{ov:.0f}% overlap",
+                "threshold": "Combined holdings overlap",
+            }
+        )
 
     return alerts
 

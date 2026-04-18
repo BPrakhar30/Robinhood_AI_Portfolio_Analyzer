@@ -1,11 +1,9 @@
-"""Structured JSON logging for services and request paths.
+"""Structured JSON logging.
 
-``get_logger`` attaches a single StreamHandler with ``pythonjsonlogger`` so logs
-are machine-parseable in production. The ``if logger.handlers`` guard avoids
-duplicate handlers if modules call ``get_logger`` repeatedly with the same name.
-
-Added: 2026-04-03
+``get_logger`` returns a singleton-per-name logger with a JSON
+StreamHandler attached exactly once.
 """
+
 import logging
 import sys
 from pythonjsonlogger import json as json_logger
@@ -25,7 +23,9 @@ def get_logger(name: str) -> logging.Logger:
     settings = get_settings()
     logger = logging.getLogger(name)
 
-    if logger.handlers:  # Re-entrant calls must not stack multiple handlers on the same logger
+    if (
+        logger.handlers
+    ):  # Re-entrant calls must not stack multiple handlers on the same logger
         return logger
 
     log_level = logging.DEBUG if settings.debug else logging.INFO

@@ -1,20 +1,18 @@
 /**
- * Centralized HTTP client for the backend API: base URL, JSON, Bearer auth from
- * sessionStorage, and consistent error shaping.
+ * Backend HTTP client: base URL, JSON, Bearer auth from sessionStorage,
+ * consistent error shaping.
  *
- * Auto-logout (clear token + redirect to /login) runs only on 401 from `/auth/me`
- * and `/auth/login`, not from broker endpoints—so a bad broker session does not
- * sign the user out of the app.
- *
- * Tokens live in sessionStorage (not localStorage) so they disappear when the tab
- * closes.
- *
- * `USER_FRIENDLY_ERRORS` supplies copy when the response has no `detail` /
- * `error_message` field.
- *
- * Added: 2026-04-03
+ * Auto-logout on 401 fires only for `/auth/me` and `/auth/login` so a bad
+ * broker session doesn't log the user out. Tokens live in sessionStorage
+ * (not localStorage) so they expire with the tab.
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+export function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem("access_token");
+}
 
 export interface APIResponse<T = unknown> {
   status: "success" | "error";
@@ -35,10 +33,7 @@ export class APIError extends Error {
   }
 }
 
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem("access_token");
-}
+const getAuthToken = getAccessToken;
 
 export function setAuthToken(token: string): void {
   sessionStorage.setItem("access_token", token);
@@ -102,7 +97,6 @@ export async function apiClient<T>(
       }
 
       if (response.status === 401) {
-        // Narrow scope: broker 401s should surface as errors, not global logout.
         const isAuthEndpoint =
           endpoint.includes("/auth/me") || endpoint.includes("/auth/login");
         if (isAuthEndpoint) {
@@ -116,6 +110,10 @@ export async function apiClient<T>(
       throw new APIError(serverMessage, response.status, serverMessage, detailData);
     }
 
+    // 204 / empty body: don't try to parse JSON.
+    if (response.status === 204 || response.headers.get("content-length") === "0") {
+      return undefined as T;
+    }
     return await response.json();
   } catch (error) {
     if (error instanceof APIError) throw error;
@@ -135,6 +133,12 @@ export const api = {
   put: <T>(endpoint: string, body?: unknown) =>
     apiClient<T>(endpoint, {
       method: "PUT",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
+  patch: <T>(endpoint: string, body?: unknown) =>
+    apiClient<T>(endpoint, {
+      method: "PATCH",
       body: body ? JSON.stringify(body) : undefined,
     }),
 

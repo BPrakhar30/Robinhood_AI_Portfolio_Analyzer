@@ -1,11 +1,7 @@
-"""SQLAlchemy ORM models for users, broker connections, and portfolio data.
+"""SQLAlchemy ORM models: users, broker connections, portfolio data, chat."""
 
-Defines schema and relationships consumed by repositories and API layers.
-Keep migrations/schema changes aligned with broker sync and auth flows.
-
-Added: 2026-04-03
-"""
 import enum
+import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column,
@@ -19,6 +15,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     UniqueConstraint,
+    Uuid,
 )
 from sqlalchemy.orm import relationship
 from app.database.engine import Base
@@ -65,7 +62,9 @@ class TransactionType(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    # UUIDv4 primary key — opaque, non-sequential, safe to expose in tokens and logs.
+    # Generated client-side (Python) so we know the id before the INSERT returns.
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=True)
@@ -92,6 +91,9 @@ class User(Base):
     portfolio_snapshots = relationship(
         "PortfolioSnapshot", back_populates="user", cascade="all, delete-orphan"
     )
+    chat_sessions = relationship(
+        "ChatSession", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class BrokerConnection(Base):
@@ -103,7 +105,10 @@ class BrokerConnection(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     broker_type = Column(Enum(BrokerType), nullable=False)
     status = Column(Enum(ConnectionStatus), default=ConnectionStatus.PENDING)
@@ -136,7 +141,10 @@ class Position(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     broker_connection_id = Column(
         Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
@@ -165,7 +173,10 @@ class Transaction(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     broker_connection_id = Column(
         Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
@@ -188,7 +199,10 @@ class PortfolioSnapshot(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     broker_connection_id = Column(
         Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
@@ -205,12 +219,75 @@ class PortfolioSnapshot(Base):
     )
 
 
+class ChatSession(Base):
+    """A user's chat thread with the portfolio assistant.
+
+    ``agent_history`` stores the serialized PydanticAI ``ModelMessage`` list
+    (the agent's internal view of the conversation, including tool calls and
+    responses). It is rewritten with ``result.all_messages_json()`` after every
+    turn. ``ChatMessage`` rows are the UI-facing view — cheap to list without
+    rehydrating the agent blob.
+    """
+
+    __tablename__ = "chat_sessions"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title = Column(String(255), nullable=False, default="New chat")
+    starred = Column(Boolean, default=False, nullable=False)
+    archived = Column(Boolean, default=False, nullable=False)
+    # JSON on SQLAlchemy maps to JSONB on Postgres — structured, queryable.
+    # Holds the output of ``result.all_messages_json()`` (a list of ModelMessage dicts).
+    agent_history = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user = relationship("User", back_populates="chat_sessions")
+    messages = relationship(
+        "ChatMessage",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="ChatMessage.created_at",
+    )
+
+
+class ChatMessage(Base):
+    """A single UI-facing message in a chat session.
+
+    Role is the wire-level role (``user`` | ``assistant``). Tool usage is kept
+    separately so the frontend can show provenance without parsing the agent
+    blob.
+    """
+
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(
+        Uuid(as_uuid=True),
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False, default="")
+    tools_used = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, index=True)
+
+    session = relationship("ChatSession", back_populates="messages")
+
+
 class SymbolMetadata(Base):
     """Persistent cache for Finnhub symbol profile lookups.
 
     Keyed by ticker symbol — only called once per symbol until the row
     goes stale (checked via ``updated_at``).
     """
+
     __tablename__ = "symbol_metadata"
 
     symbol = Column(String(20), primary_key=True)

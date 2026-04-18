@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
-
 # ── Health Score ────────────────────────────────────────────────────
+
 
 class SubScoreDetail(BaseModel):
     score: float
@@ -19,6 +19,7 @@ class HealthScoreResponse(BaseModel):
 
 
 # ── Risk Alerts ─────────────────────────────────────────────────────
+
 
 class RiskAlert(BaseModel):
     id: str

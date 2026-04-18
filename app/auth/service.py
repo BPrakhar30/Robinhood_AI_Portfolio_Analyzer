@@ -1,14 +1,12 @@
-"""
-Authentication service: user registration, login, email verification, and JWT access tokens.
+"""Auth service: registration, login, email verification, JWT access tokens.
 
-``resend_verification`` always returns generic success-style messaging so callers cannot infer
-whether an email is registered (mitigates email enumeration). ``login`` requires an active,
-email-verified account before issuing a token.
-
-Added: 2026-04-03
+``resend_verification`` returns generic responses to prevent email enumeration.
+``login`` requires an active, email-verified account.
 """
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -33,11 +31,14 @@ from app.utils.logging import get_logger
 
 logger = get_logger("auth")
 
+
 def _hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
+
 def _verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
+
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -83,7 +84,7 @@ class AuthService:
 
         logger.info(
             "User registered",
-            extra={"event": "user_registered", "user_id": user.id},
+            extra={"event": "user_registered", "user_id": str(user.id)},
         )
 
         await send_verification_email(email, code, full_name)
@@ -113,7 +114,7 @@ class AuthService:
         if user.email_verification_expires_at:
             expiry = user.email_verification_expires_at
             now = datetime.now(timezone.utc)
-            # ORM/SQLite often yields naive datetimes; treat stored expiry as UTC before comparing.
+            # ORM may yield naive datetimes; treat stored expiry as UTC before comparing.
             if expiry.tzinfo is None:
                 expiry = expiry.replace(tzinfo=timezone.utc)
             if expiry < now:
@@ -134,7 +135,7 @@ class AuthService:
         await self._session.flush()
 
         logger.info(
-            "Email verified", extra={"event": "email_verified", "user_id": user.id}
+            "Email verified", extra={"event": "email_verified", "user_id": str(user.id)}
         )
         return user
 
@@ -160,7 +161,7 @@ class AuthService:
 
         logger.info(
             "Verification code resent",
-            extra={"event": "verification_resent", "user_id": user.id},
+            extra={"event": "verification_resent", "user_id": str(user.id)},
         )
         return {
             "message": "If an account with that email exists, a new code has been sent."
@@ -197,7 +198,7 @@ class AuthService:
         expires_in = self._settings.jwt_access_token_expire_minutes * 60
 
         logger.info(
-            "User logged in", extra={"event": "login_success", "user_id": user.id}
+            "User logged in", extra={"event": "login_success", "user_id": str(user.id)}
         )
 
         return {
@@ -206,11 +207,12 @@ class AuthService:
             "expires_in": expires_in,
         }
 
-    def _create_access_token(self, user_id: int) -> str:
+    def _create_access_token(self, user_id: UUID) -> str:
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=self._settings.jwt_access_token_expire_minutes
         )
         payload = {
+            # UUID serialized as a canonical 36-char string. Opaque to clients.
             "sub": str(user_id),
             "exp": expire,
             "iat": datetime.now(timezone.utc),
@@ -230,7 +232,9 @@ class AuthService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {"message": "If an account with that email exists, a reset link has been sent."}
+            return {
+                "message": "If an account with that email exists, a reset link has been sent."
+            }
 
         token = secrets.token_urlsafe(32)
         user.password_reset_token = token
@@ -241,9 +245,11 @@ class AuthService:
 
         logger.info(
             "Password reset requested",
-            extra={"event": "password_reset_requested", "user_id": user.id},
+            extra={"event": "password_reset_requested", "user_id": str(user.id)},
         )
-        return {"message": "If an account with that email exists, a reset link has been sent."}
+        return {
+            "message": "If an account with that email exists, a reset link has been sent."
+        }
 
     async def reset_password(self, token: str, new_password: str) -> dict:
         """Validate a reset token and update the user's password."""
@@ -279,7 +285,7 @@ class AuthService:
 
         logger.info(
             "Password reset completed",
-            extra={"event": "password_reset_completed", "user_id": user.id},
+            extra={"event": "password_reset_completed", "user_id": str(user.id)},
         )
         return {"message": "Password has been reset successfully. You can now log in."}
 
@@ -287,11 +293,15 @@ class AuthService:
         """Permanently delete a user account and all associated data."""
         await self._session.delete(user)
         await self._session.flush()
-        logger.info("Account deleted", extra={"event": "account_deleted", "user_id": user.id})
+        logger.info(
+            "Account deleted",
+            extra={"event": "account_deleted", "user_id": str(user.id)},
+        )
         return True
 
     @staticmethod
-    def verify_token(token: str) -> Optional[int]:
+    def verify_token(token: str) -> Optional[UUID]:
+        """Decode the JWT and return the user's UUID, or None if invalid."""
         settings = get_settings()
         try:
             payload = jwt.decode(
@@ -299,8 +309,12 @@ class AuthService:
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
             )
-            user_id = payload.get("sub")
-            return int(user_id) if user_id else None
+            sub = payload.get("sub")
+            if not sub:
+                return None
+            # Rejecting malformed UUIDs here prevents them from reaching the DB
+            # layer as opaque strings that might match due to implicit casting.
+            return UUID(str(sub))
         except (JWTError, ValueError):
             return None
 

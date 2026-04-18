@@ -1,14 +1,10 @@
-# Backend Dockerfile — Python 3.12 / FastAPI / Uvicorn
-# Installs all Python dependencies; source code is bind-mounted at runtime
-# so uvicorn --reload picks up changes instantly without a rebuild.
-#
-# Added: 2026-04-03
+# Backend: Python 3.12 / FastAPI / Uvicorn. Source is bind-mounted in dev.
 
 FROM python:3.12-slim
 
 WORKDIR /workspace
 
-# System deps required by psycopg2-binary, bcrypt, and cryptography
+# System deps for psycopg2-binary, bcrypt, cryptography.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc libpq-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -16,7 +12,6 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source (overridden by bind mount in dev)
 COPY app/ ./app/
 COPY .env.example .
 

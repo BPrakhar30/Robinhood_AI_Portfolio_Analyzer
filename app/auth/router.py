@@ -1,11 +1,8 @@
-"""
-REST routes for authentication: register, verify email, resend code, login, and current user.
+"""Auth routes: register, verify email, resend code, login, current user.
 
-``/resend-verification`` delegates to the service layer, which uses generic responses so
-clients cannot distinguish unknown emails from known ones (anti-enumeration).
-
-Added: 2026-04-03
+``/resend-verification`` returns generic responses to prevent email enumeration.
 """
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,7 +87,9 @@ async def reset_password(
 ):
     """Reset password using a valid reset token."""
     service = AuthService(session)
-    return await service.reset_password(token=payload.token, new_password=payload.new_password)
+    return await service.reset_password(
+        token=payload.token, new_password=payload.new_password
+    )
 
 
 @router.get("/me", response_model=UserResponse)

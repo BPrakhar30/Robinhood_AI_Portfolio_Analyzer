@@ -1,14 +1,9 @@
 """Application settings loaded from environment via pydantic-settings.
 
-Centralizes configuration with env-based overrides (.env and process env).
-``get_settings()`` is memoized with ``@lru_cache`` so a single Settings instance
-is shared process-wide (singleton-style access without a global mutable object).
-
-Default field values exist for local development convenience only; production
-deployments must override secrets, database URLs, and related values via env.
-
-Added: 2026-04-03
+``get_settings()`` is memoized so a single Settings instance is shared
+process-wide. Defaults are for local dev; production must override via env.
 """
+
 from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -31,9 +26,13 @@ class Settings(BaseSettings):
     debug: bool = True
     secret_key: str = "change-me-in-production"
 
-    # Database (defaults to SQLite for local dev; use PostgreSQL in staging/production)
-    database_url: str = "sqlite+aiosqlite:///./robinhood_ai.db"
-    database_url_sync: str = "sqlite:///./robinhood_ai.db"
+    # Database (PostgreSQL via docker-compose; override via .env or environment)
+    database_url: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/robinhood_ai"
+    )
+    database_url_sync: str = (
+        "postgresql://postgres:postgres@localhost:5432/robinhood_ai"
+    )
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -77,6 +76,13 @@ class Settings(BaseSettings):
     # LLM
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
+
+    # AI Assistant (PydanticAI + OpenRouter)
+    openrouter_api_key: str = ""
+    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct:free"
+
+    # MCP portfolio tools (Streamable HTTP). Compose default; override for bare-metal.
+    mcp_server_url: str = "http://mcp-server:8765/mcp"
 
     model_config = {
         "env_file": str(_ENV_FILE),

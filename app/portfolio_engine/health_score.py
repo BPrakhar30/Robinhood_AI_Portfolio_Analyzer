@@ -5,6 +5,7 @@ Computes a composite 0-100 score from five sub-scores:
   Diversification (30%) · Concentration (25%) · ETF Overlap (20%)
   Volatility (15%) · Expense Efficiency (10%)
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,6 +43,7 @@ def _grade(score: float) -> str:
 
 # ── Sub-score A: Diversification (HHI) ─────────────────────────────
 
+
 def _diversification_score(
     sector_weights: dict[str, float],
 ) -> tuple[float, dict]:
@@ -76,6 +78,7 @@ def _diversification_score(
 
 # ── Sub-score B: Risk Concentration ─────────────────────────────────
 
+
 def _concentration_score(
     holdings: list[tuple[str, float]],
     total_value: float,
@@ -106,6 +109,7 @@ def _concentration_score(
 
 
 # ── Sub-score C: ETF Overlap ───────────────────────────────────────
+
 
 def _overlap_score(etf_symbols: list[str]) -> tuple[float, dict]:
     """Score based on pairwise ETF overlap. Less overlap = higher score."""
@@ -148,6 +152,7 @@ def _overlap_score(etf_symbols: list[str]) -> tuple[float, dict]:
 
 # ── Sub-score D: Volatility Exposure ───────────────────────────────
 
+
 def _volatility_score(
     holdings: list[tuple[str, float, str, str]],
     total_value: float,
@@ -177,6 +182,7 @@ def _volatility_score(
 
 
 # ── Sub-score E: Expense Efficiency ────────────────────────────────
+
 
 def _expense_score(
     etf_holdings: list[tuple[str, float]],
@@ -213,6 +219,7 @@ def _expense_score(
 
 # ── Composite ──────────────────────────────────────────────────────
 
+
 def compute_health_score(
     positions: list[dict],
     sector_profiles: dict[str, str],
@@ -227,13 +234,18 @@ def compute_health_score(
     """
     if not positions:
         empty_sub = {
-            "score": 0, "label": "No data", "description": "Connect a broker to see your score.", "details": {}
+            "score": 0,
+            "label": "No data",
+            "description": "Connect a broker to see your score.",
+            "details": {},
         }
         return {
             "overall_score": 0,
             "grade": "N/A",
             "sub_scores": {k: empty_sub for k in WEIGHTS},
-            "top_issues": ["No positions found. Connect a broker or import a CSV to get started."],
+            "top_issues": [
+                "No positions found. Connect a broker or import a CSV to get started."
+            ],
             "suggestions": [],
         }
 
@@ -264,14 +276,21 @@ def compute_health_score(
 
     if total_value <= 0:
         empty_sub = {
-            "score": 0, "label": "No data", "description": "All positions have zero market value.", "details": {}
+            "score": 0,
+            "label": "No data",
+            "description": "All positions have zero market value.",
+            "details": {},
         }
         return {
             "overall_score": 0,
             "grade": "N/A",
             "sub_scores": {k: empty_sub for k in WEIGHTS},
-            "top_issues": ["All positions have zero market value. Sync your broker to update prices."],
-            "suggestions": ["Sync your broker connection to fetch current market prices."],
+            "top_issues": [
+                "All positions have zero market value. Sync your broker to update prices."
+            ],
+            "suggestions": [
+                "Sync your broker connection to fetch current market prices."
+            ],
         }
 
     # Compute sub-scores
@@ -331,13 +350,16 @@ def compute_health_score(
 
 # ── Description generators (plain-English, no LLM) ────────────────
 
+
 def _div_description(score: float, d: dict) -> str:
     n = d.get("sector_count", 0)
     hhi = d.get("hhi", 1)
     if score >= 80:
         return f"Well diversified across {n} sectors."
     if score >= 50:
-        return f"Moderately diversified across {n} sectors. Some concentration detected."
+        return (
+            f"Moderately diversified across {n} sectors. Some concentration detected."
+        )
     return f"Concentrated in only {n} sector{'s' if n != 1 else ''}. Consider broadening exposure."
 
 
@@ -394,21 +416,33 @@ def _build_suggestions(sub_scores: dict) -> list[str]:
     suggestions = []
     d = sub_scores["diversification"]
     if d["score"] < 60:
-        suggestions.append("Add positions in under-represented sectors like Healthcare, Consumer Staples, or Utilities.")
+        suggestions.append(
+            "Add positions in under-represented sectors like Healthcare, Consumer Staples, or Utilities."
+        )
     c = sub_scores["concentration"]
     if c["score"] < 60:
         top = c["details"].get("top_holding", "your top holding")
-        suggestions.append(f"Consider trimming {top} and spreading into broader index ETFs.")
+        suggestions.append(
+            f"Consider trimming {top} and spreading into broader index ETFs."
+        )
     o = sub_scores["overlap"]
     if o["score"] < 60 and o["details"].get("worst_pair"):
         pair = o["details"]["worst_pair"]
-        suggestions.append(f"Consolidate overlapping ETFs ({pair}) into a single broad-market fund.")
+        suggestions.append(
+            f"Consolidate overlapping ETFs ({pair}) into a single broad-market fund."
+        )
     v = sub_scores["volatility"]
     if v["score"] < 50:
-        suggestions.append("Add low-beta holdings like bonds (BND) or defensive sectors to reduce volatility.")
+        suggestions.append(
+            "Add low-beta holdings like bonds (BND) or defensive sectors to reduce volatility."
+        )
     e = sub_scores["expenses"]
     if e["score"] < 50:
-        suggestions.append("Switch high-expense ETFs to lower-cost index alternatives (e.g., VOO, VTI).")
+        suggestions.append(
+            "Switch high-expense ETFs to lower-cost index alternatives (e.g., VOO, VTI)."
+        )
     if not suggestions:
-        suggestions.append("Your portfolio looks healthy. Keep monitoring allocation as positions change.")
+        suggestions.append(
+            "Your portfolio looks healthy. Keep monitoring allocation as positions change."
+        )
     return suggestions

@@ -1,12 +1,10 @@
-"""
-HTTP API for broker connect/disconnect, Plaid link token, CSV import, and read models.
+"""HTTP API for broker connect/disconnect, Plaid link token, CSV import, and reads.
 
-``_api_response`` is the shared envelope (status/data/error/timestamp) expected by client code.
-Connect/disconnect/sync and Plaid link-token handlers catch ``AppException`` and re-raise as
-``HTTPException`` so broker-layer errors surface with consistent HTTP status and ``detail``.
-
-Added: 2026-04-03
+``_api_response`` is the shared envelope (status/data/error/timestamp)
+expected by clients. ``AppException`` is translated to ``HTTPException``
+so broker-layer errors surface with consistent status codes.
 """
+
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -148,11 +146,13 @@ async def complete_robinhood_mfa(
             access_token=result["access_token"],
             refresh_token=result.get("refresh_token", ""),
         )
-        return _api_response(data={
-            "connection_id": connection.id,
-            "broker_type": connection.broker_type.value,
-            "status": connection.status.value,
-        })
+        return _api_response(
+            data={
+                "connection_id": connection.id,
+                "broker_type": connection.broker_type.value,
+                "status": connection.status.value,
+            }
+        )
 
     except AppException as e:
         logger.error(f"Robinhood MFA failed: {e.message}")
@@ -491,21 +491,23 @@ async def get_allocation(
         for label, val in items:
             bucket_total = val if val > 0 else 1
             holdings = sorted(hold_map[label], key=lambda h: h[3], reverse=True)
-            result.append(AllocationBreakdown(
-                label=label,
-                value=round(val, 2),
-                percent=round(val / total_value * 100, 2) if total_value > 0 else 0,
-                holdings=[
-                    AllocationHolding(
-                        symbol=sym,
-                        name=name,
-                        asset_type=at,
-                        market_value=round(hmv, 2),
-                        percent=round(hmv / bucket_total * 100, 2),
-                    )
-                    for sym, name, at, hmv in holdings
-                ],
-            ))
+            result.append(
+                AllocationBreakdown(
+                    label=label,
+                    value=round(val, 2),
+                    percent=round(val / total_value * 100, 2) if total_value > 0 else 0,
+                    holdings=[
+                        AllocationHolding(
+                            symbol=sym,
+                            name=name,
+                            asset_type=at,
+                            market_value=round(hmv, 2),
+                            percent=round(hmv / bucket_total * 100, 2),
+                        )
+                        for sym, name, at, hmv in holdings
+                    ],
+                )
+            )
         return result
 
     return AllocationResponse(

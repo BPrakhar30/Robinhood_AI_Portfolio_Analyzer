@@ -1,6 +1,7 @@
 """
 Portfolio engine API — health score and risk alerts.
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,14 +46,16 @@ async def _load_positions_with_profiles(
         )
         sector_profiles[p.symbol] = p.sector or profile.sector
 
-        result.append({
-            "symbol": p.symbol,
-            "name": p.name or p.symbol,
-            "quantity": p.quantity,
-            "current_price": p.current_price or 0,
-            "asset_type": asset_type_str,
-            "sector": p.sector or profile.sector,
-        })
+        result.append(
+            {
+                "symbol": p.symbol,
+                "name": p.name or p.symbol,
+                "quantity": p.quantity,
+                "current_price": p.current_price or 0,
+                "asset_type": asset_type_str,
+                "sector": p.sector or profile.sector,
+            }
+        )
 
     return result, sector_profiles
 

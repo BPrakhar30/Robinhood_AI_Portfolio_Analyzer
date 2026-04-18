@@ -8,6 +8,7 @@ News sources (all free, no API key required for RSS):
 Uses httpx for async HTTP, xml.etree for RSS parsing, and in-memory caching
 with TTLs to avoid hammering upstream sources.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -26,9 +27,9 @@ logger = get_logger("markets.service")
 FINNHUB_BASE = "https://finnhub.io/api/v1"
 
 _cache: dict[str, tuple[float, object]] = {}
-NEWS_TTL = 300        # 5 min
-EARNINGS_TTL = 900    # 15 min
-RSS_TTL = 600         # 10 min
+NEWS_TTL = 300  # 5 min
+EARNINGS_TTL = 900  # 15 min
+RSS_TTL = 600  # 10 min
 
 RSS_FEEDS: list[dict[str, str]] = [
     {
@@ -93,8 +94,10 @@ def _cache_set(key: str, value: object):
 
 def _time_ago(dt_str: str) -> str:
     try:
-        ts = int(dt_str) if dt_str.isdigit() else int(
-            datetime.fromisoformat(dt_str).timestamp()
+        ts = (
+            int(dt_str)
+            if dt_str.isdigit()
+            else int(datetime.fromisoformat(dt_str).timestamp())
         )
     except (ValueError, TypeError):
         return "recently"
@@ -165,17 +168,20 @@ async def _fetch_single_rss(
         clean_desc = desc
         if "<" in clean_desc:
             import re
+
             clean_desc = re.sub(r"<[^>]+>", "", clean_desc).strip()
 
         ts = _parse_rfc2822(pub) if pub else time.time()
 
-        items.append({
-            "title": title,
-            "summary": clean_desc[:500] if clean_desc else "",
-            "source": feed["name"],
-            "url": link,
-            "timestamp": ts,
-        })
+        items.append(
+            {
+                "title": title,
+                "summary": clean_desc[:500] if clean_desc else "",
+                "source": feed["name"],
+                "url": link,
+                "timestamp": ts,
+            }
+        )
 
     return items
 
@@ -241,25 +247,29 @@ async def fetch_market_news() -> dict:
 
     headlines = []
     for item in all_items[:10]:
-        headlines.append({
-            "title": item["title"],
-            "summary": item.get("summary", ""),
-            "source": item.get("source", ""),
-            "url": item.get("url", ""),
-        })
+        headlines.append(
+            {
+                "title": item["title"],
+                "summary": item.get("summary", ""),
+                "source": item.get("source", ""),
+                "url": item.get("url", ""),
+            }
+        )
 
     articles = []
     for item in all_items[:15]:
         excerpt = item.get("summary", "") or ""
         if len(excerpt) > 280:
             excerpt = excerpt[:280] + "..."
-        articles.append({
-            "source": item.get("source", ""),
-            "time_ago": _time_ago(str(int(item.get("timestamp", time.time())))),
-            "title": item["title"],
-            "excerpt": excerpt,
-            "url": item.get("url", ""),
-        })
+        articles.append(
+            {
+                "source": item.get("source", ""),
+                "time_ago": _time_ago(str(int(item.get("timestamp", time.time())))),
+                "title": item["title"],
+                "excerpt": excerpt,
+                "url": item.get("url", ""),
+            }
+        )
 
     # Collect unique source names
     source_names = []
@@ -301,13 +311,15 @@ async def _fetch_finnhub_news() -> list[dict]:
 
     items = []
     for article in raw[:15]:
-        items.append({
-            "title": article.get("headline", ""),
-            "summary": article.get("summary", ""),
-            "source": article.get("source", "Finnhub"),
-            "url": article.get("url", ""),
-            "timestamp": article.get("datetime", time.time()),
-        })
+        items.append(
+            {
+                "title": article.get("headline", ""),
+                "summary": article.get("summary", ""),
+                "source": article.get("source", "Finnhub"),
+                "url": article.get("url", ""),
+                "timestamp": article.get("datetime", time.time()),
+            }
+        )
     return items
 
 
@@ -369,12 +381,14 @@ async def fetch_earnings_calendar(target_date: str | None = None) -> dict:
         day = week_start + timedelta(days=i)
         day_str = day.isoformat()
         entries = by_date.get(day_str, [])
-        week.append({
-            "date": day_str,
-            "day_label": day_labels[i],
-            "earnings_count": len(entries),
-            "symbols": [e.get("symbol", "") for e in entries[:5]],
-        })
+        week.append(
+            {
+                "date": day_str,
+                "day_label": day_labels[i],
+                "earnings_count": len(entries),
+                "symbols": [e.get("symbol", "") for e in entries[:5]],
+            }
+        )
 
     result = {
         "week": week,
@@ -418,18 +432,20 @@ async def fetch_earnings_for_date(date: str) -> dict:
         else:
             hour_display = hour_raw or "TBD"
 
-        entries.append({
-            "symbol": e.get("symbol", ""),
-            "company": e.get("symbol", ""),
-            "date": e.get("date", date),
-            "hour": hour_display,
-            "quarter": e.get("quarter", 0),
-            "year": e.get("year", 0),
-            "eps_estimate": e.get("epsEstimate"),
-            "eps_actual": e.get("epsActual"),
-            "revenue_estimate": e.get("revenueEstimate"),
-            "revenue_actual": e.get("revenueActual"),
-        })
+        entries.append(
+            {
+                "symbol": e.get("symbol", ""),
+                "company": e.get("symbol", ""),
+                "date": e.get("date", date),
+                "hour": hour_display,
+                "quarter": e.get("quarter", 0),
+                "year": e.get("year", 0),
+                "eps_estimate": e.get("epsEstimate"),
+                "eps_actual": e.get("epsActual"),
+                "revenue_estimate": e.get("revenueEstimate"),
+                "revenue_actual": e.get("revenueActual"),
+            }
+        )
 
     symbols_to_resolve = [e["symbol"] for e in entries if e["symbol"]]
     if symbols_to_resolve and api_key:
@@ -476,10 +492,12 @@ def _empty_earnings_week(week_start, today) -> dict:
     week = []
     for i in range(7):
         day = week_start + timedelta(days=i)
-        week.append({
-            "date": day.isoformat(),
-            "day_label": day_labels[i],
-            "earnings_count": 0,
-            "symbols": [],
-        })
+        week.append(
+            {
+                "date": day.isoformat(),
+                "day_label": day_labels[i],
+                "earnings_count": 0,
+                "symbols": [],
+            }
+        )
     return {"week": week, "selected_date": today.isoformat()}

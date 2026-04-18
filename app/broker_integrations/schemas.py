@@ -1,11 +1,5 @@
-"""
-Pydantic IO models for broker endpoints: connect payloads, portfolio projections, and envelopes.
+"""Pydantic IO models for broker endpoints: connect payloads, projections, envelopes."""
 
-``CSVUploadRequest.csv_type`` is constrained to positions vs transactions via regex. ``APIResponse``
-is the canonical wrapper for broker mutation endpoints.
-
-Added: 2026-04-03
-"""
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
@@ -41,7 +35,9 @@ class CSVUploadRequest(BaseModel):
     csv_content: str
     cash_balance: float = 0.0
     filename: Optional[str] = "upload.csv"
-    csv_type: str = Field(default="positions", pattern="^(positions|transactions)$")  # strict branch selector
+    csv_type: str = Field(
+        default="positions", pattern="^(positions|transactions)$"
+    )  # strict branch selector
 
 
 class BrokerConnectionResponse(BaseModel):

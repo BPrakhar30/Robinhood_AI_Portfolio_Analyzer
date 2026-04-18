@@ -1,13 +1,8 @@
-"""
-Pydantic request/response models for auth endpoints.
+"""Pydantic request/response models for auth endpoints."""
 
-Password length bounds enforce minimum strength and a reasonable upper bound for DoS resistance.
-``model_config = {"from_attributes": True}`` lets responses hydrate from SQLAlchemy models.
-
-Added: 2026-04-03
-"""
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -24,7 +19,7 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: int
+    id: UUID
     email: str
     full_name: Optional[str] = None
     is_active: bool

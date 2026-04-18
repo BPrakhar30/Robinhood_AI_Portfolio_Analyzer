@@ -1,12 +1,10 @@
-"""
-Plaid broker adapter—primary fallback when direct Robinhood OAuth is not used.
+"""Plaid broker adapter — fallback when direct Robinhood OAuth is unused.
 
-``PLAID_ENV_MAP`` maps app config ``development`` to Plaid Sandbox because this SDK revision
-does not expose a separate Development host constant. ``set_access_token`` rehydrates tokens
-decrypted from the database for sync/reconnect flows without repeating Link.
-
-Added: 2026-04-03
+``PLAID_ENV_MAP`` maps ``development`` → Plaid Sandbox (SDK lacks a
+separate Development host). ``set_access_token`` rehydrates tokens from
+the DB for sync/reconnect without re-running Link.
 """
+
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 

@@ -1,12 +1,9 @@
 """Symbol metadata enrichment via Finnhub ``/stock/profile2``.
 
-Fetches sector, country, and market-cap data for equity symbols and caches
-results in the ``symbol_metadata`` DB table so Finnhub is only called once
-per symbol until the row goes stale (7 days).  Crypto and unknown ETFs get
-hardcoded defaults without an API call.
-
-Added: 2026-04-08
+Equity sector/country/market-cap are cached in ``symbol_metadata`` for 7
+days. Crypto and unknown ETFs use hardcoded defaults (no API call).
 """
+
 from __future__ import annotations
 
 import time
@@ -36,17 +33,28 @@ class SymbolProfile:
     market_cap_category: str
 
 
-GROWTH_SECTORS = frozenset({
-    "Technology", "Crypto", "Cryptocurrency",
-    "Communication Services", "Consumer Discretionary",
-})
-VALUE_SECTORS = frozenset({
-    "Utilities", "Consumer Staples", "Financials",
-    "Real Estate", "Energy",
-})
+GROWTH_SECTORS = frozenset(
+    {
+        "Technology",
+        "Crypto",
+        "Cryptocurrency",
+        "Communication Services",
+        "Consumer Discretionary",
+    }
+)
+VALUE_SECTORS = frozenset(
+    {
+        "Utilities",
+        "Consumer Staples",
+        "Financials",
+        "Real Estate",
+        "Energy",
+    }
+)
 
 # Well-known ETFs whose Finnhub profile is empty or misleading.
 _ETF_OVERRIDES: dict[str, SymbolProfile] = {}
+
 
 def _build_etf_overrides() -> dict[str, SymbolProfile]:
     """Lazy-build static ETF metadata for common funds."""
@@ -57,7 +65,9 @@ def _build_etf_overrides() -> dict[str, SymbolProfile]:
     _sp500 = SymbolProfile("Diversified", "S&P 500 ETF", "US", 0, "N/A")
     _total = SymbolProfile("Diversified", "Total Market ETF", "US", 0, "N/A")
     _intl = SymbolProfile("Diversified", "International ETF", "International", 0, "N/A")
-    _em = SymbolProfile("Diversified", "Emerging Markets ETF", "Emerging Markets", 0, "N/A")
+    _em = SymbolProfile(
+        "Diversified", "Emerging Markets ETF", "Emerging Markets", 0, "N/A"
+    )
     _bond = SymbolProfile("Fixed Income", "Bond ETF", "US", 0, "N/A")
     _re = SymbolProfile("Real Estate", "Real Estate ETF", "US", 0, "N/A")
     _gold = SymbolProfile("Commodities", "Precious Metals ETF", "Global", 0, "N/A")
@@ -69,7 +79,20 @@ def _build_etf_overrides() -> dict[str, SymbolProfile]:
     _div = SymbolProfile("Diversified", "Dividend ETF", "US", 0, "N/A")
 
     mapping: dict[str, SymbolProfile] = {}
-    for s in ("SPY", "IVV", "VOO", "SPLG", "RSP", "SSO", "UPRO", "SPXL", "SH", "SDS", "SPXU", "SPXS"):
+    for s in (
+        "SPY",
+        "IVV",
+        "VOO",
+        "SPLG",
+        "RSP",
+        "SSO",
+        "UPRO",
+        "SPXL",
+        "SH",
+        "SDS",
+        "SPXU",
+        "SPXS",
+    ):
         mapping[s] = _sp500
     for s in ("VTI", "ITOT", "SCHB", "SPTM", "IWV"):
         mapping[s] = _total
@@ -79,19 +102,80 @@ def _build_etf_overrides() -> dict[str, SymbolProfile]:
         mapping[s] = _tech
     for s in ("SOXX", "SMH", "SOXL", "SOXS", "XSD"):
         mapping[s] = _semi
-    for s in ("VXUS", "IXUS", "IDEV", "VEA", "VEU", "SPDW", "SCHF", "EFA", "IEFA", "ACWX"):
+    for s in (
+        "VXUS",
+        "IXUS",
+        "IDEV",
+        "VEA",
+        "VEU",
+        "SPDW",
+        "SCHF",
+        "EFA",
+        "IEFA",
+        "ACWX",
+    ):
         mapping[s] = _intl
     for s in ("VWO", "EEM", "IEMG", "SCHE", "SPEM", "EEMV"):
         mapping[s] = _em
-    for s in ("BND", "AGG", "SCHZ", "BNDX", "TLT", "SHY", "IEF", "GOVT", "VGSH", "VGIT", "VGLT",
-              "LQD", "HYG", "JNK", "MUB", "SUB", "VCIT", "VCSH", "VCLT", "SPAB", "SPTL",
-              "TIP", "VTIP", "STIP", "EMB", "EMLC", "SHYG", "SJNK", "FLOT", "FLRN",
-              "SHV", "BIL", "SGOV", "USFR", "TFLO", "TBT", "EDV", "ZROZ"):
+    for s in (
+        "BND",
+        "AGG",
+        "SCHZ",
+        "BNDX",
+        "TLT",
+        "SHY",
+        "IEF",
+        "GOVT",
+        "VGSH",
+        "VGIT",
+        "VGLT",
+        "LQD",
+        "HYG",
+        "JNK",
+        "MUB",
+        "SUB",
+        "VCIT",
+        "VCSH",
+        "VCLT",
+        "SPAB",
+        "SPTL",
+        "TIP",
+        "VTIP",
+        "STIP",
+        "EMB",
+        "EMLC",
+        "SHYG",
+        "SJNK",
+        "FLOT",
+        "FLRN",
+        "SHV",
+        "BIL",
+        "SGOV",
+        "USFR",
+        "TFLO",
+        "TBT",
+        "EDV",
+        "ZROZ",
+    ):
         mapping[s] = _bond
     for s in ("VNQ", "SCHH", "XLRE", "IYR", "RWR", "REZ"):
         mapping[s] = _re
-    for s in ("GLD", "IAU", "GLDM", "SLV", "SIVR", "PPLT", "PALL", "GDX", "GDXJ",
-              "SIL", "SILJ", "SGOL", "GLTR", "OUNZ"):
+    for s in (
+        "GLD",
+        "IAU",
+        "GLDM",
+        "SLV",
+        "SIVR",
+        "PPLT",
+        "PALL",
+        "GDX",
+        "GDXJ",
+        "SIL",
+        "SILJ",
+        "SGOL",
+        "GLTR",
+        "OUNZ",
+    ):
         mapping[s] = _gold
     for s in ("XLE", "VDE", "OIH", "USO", "UNG", "XOP"):
         mapping[s] = _energy
@@ -101,7 +185,19 @@ def _build_etf_overrides() -> dict[str, SymbolProfile]:
         mapping[s] = _fin
     for s in ("IBIT", "FBTC", "BITB", "ARKB", "GBTC", "BITO"):
         mapping[s] = _btc_etf
-    for s in ("SCHD", "VYM", "HDV", "DVY", "SDY", "DGRO", "NOBL", "VIG", "SPYD", "JEPI", "JEPQ"):
+    for s in (
+        "SCHD",
+        "VYM",
+        "HDV",
+        "DVY",
+        "SDY",
+        "DGRO",
+        "NOBL",
+        "VIG",
+        "SPYD",
+        "JEPI",
+        "JEPQ",
+    ):
         mapping[s] = _div
 
     _ETF_OVERRIDES.update(mapping)
@@ -150,8 +246,11 @@ def _fetch_finnhub_profile_sync(symbol: str, api_key: str) -> Optional[dict]:
 
 async def _fetch_finnhub_profile(symbol: str, api_key: str) -> Optional[dict]:
     import asyncio
+
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _fetch_finnhub_profile_sync, symbol, api_key)
+    return await loop.run_in_executor(
+        None, _fetch_finnhub_profile_sync, symbol, api_key
+    )
 
 
 async def _load_from_db(symbol: str, session) -> Optional[SymbolProfile]:
@@ -193,14 +292,16 @@ async def _persist_to_db(symbol: str, profile: SymbolProfile, session) -> None:
         row.market_cap_category = profile.market_cap_category
         row.updated_at = datetime.now(timezone.utc)
     else:
-        session.add(SymbolMetadata(
-            symbol=symbol,
-            sector=profile.sector,
-            industry=profile.industry,
-            country=profile.country,
-            market_cap=profile.market_cap,
-            market_cap_category=profile.market_cap_category,
-        ))
+        session.add(
+            SymbolMetadata(
+                symbol=symbol,
+                sector=profile.sector,
+                industry=profile.industry,
+                country=profile.country,
+                market_cap=profile.market_cap,
+                market_cap_category=profile.market_cap_category,
+            )
+        )
 
 
 async def get_symbol_profile(

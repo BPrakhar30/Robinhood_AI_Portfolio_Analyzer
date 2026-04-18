@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 
 os.environ["APP_ENV"] = "development"
 os.environ["DEBUG"] = "true"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
-os.environ["DATABASE_URL_SYNC"] = "sqlite:///./test.db"
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/robinhood_ai_test"
+os.environ["DATABASE_URL_SYNC"] = "postgresql://postgres:postgres@localhost:5432/robinhood_ai_test"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["ENCRYPTION_KEY"] = ""
 
@@ -16,7 +16,10 @@ from app.database.engine import Base, get_async_session
 from app.main import app
 
 
-test_engine = create_async_engine("sqlite+aiosqlite:///./test.db", echo=False)
+test_engine = create_async_engine(
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/robinhood_ai_test",
+    echo=False,
+)
 TestSessionLocal = async_sessionmaker(bind=test_engine, class_=AsyncSession, expire_on_commit=False)
 
 

@@ -32,7 +32,9 @@ async def get_market_news(current_user: User = Depends(get_current_user)):
 
 @router.get("/earnings/calendar", response_model=EarningsCalendarResponse)
 async def get_earnings_calendar(
-    date: str | None = Query(None, description="Center date YYYY-MM-DD; defaults to today"),
+    date: str | None = Query(
+        None, description="Center date YYYY-MM-DD; defaults to today"
+    ),
     current_user: User = Depends(get_current_user),
 ):
     """Weekly earnings calendar strip."""

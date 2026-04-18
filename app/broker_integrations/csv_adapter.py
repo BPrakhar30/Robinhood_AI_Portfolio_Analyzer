@@ -1,12 +1,9 @@
-"""
-CSV portfolio import—last-resort path when OAuth/Plaid are unavailable.
+"""CSV portfolio import — fallback when OAuth/Plaid aren't available.
 
-Headers are normalized (trim, lower, spaces to underscores) so user spreadsheets stay forgiving.
-When ``unrealized_gains`` is absent/zero but ``current_price`` is present, unrealized P/L is derived.
-``SAMPLE_CSV_TEMPLATE`` doubles as documentation and the downloadable starter file.
-
-Added: 2026-04-03
+Headers are normalized (trim, lower, spaces → underscores). Unrealized P/L
+is derived from ``current_price`` when ``unrealized_gains`` is absent.
 """
+
 import io
 from datetime import datetime, timezone
 from typing import Optional

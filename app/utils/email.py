@@ -1,12 +1,9 @@
 """Email verification helpers: OTP generation and sending.
 
-Development mode logs the code to the console so SMTP is optional locally.
-Production requires ``smtp_*`` settings; missing host results in a warning and
-no send. The HTML template uses letter-spacing and spaced digits so the code
-stays readable in common email clients (accessibility / UX).
-
-Added: 2026-04-03
+Dev mode logs the code to the console (SMTP optional). Production needs
+``smtp_*`` settings; missing host logs a warning and skips send.
 """
+
 import random
 import string
 from datetime import datetime, timedelta, timezone
