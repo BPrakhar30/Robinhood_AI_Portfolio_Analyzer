@@ -13,6 +13,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from pydantic_ai.exceptions import ModelHTTPError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import get_current_user
@@ -22,6 +23,23 @@ from app.utils.logging import get_logger
 
 from .models import AssistantAnswer
 from .service import AssistantService
+
+
+def _upstream_error_message(exc: ModelHTTPError) -> str:
+    """Turn a pydantic-ai upstream error into a user-friendly message."""
+    code = exc.status_code
+    if code == 429:
+        return (
+            "The model is currently rate-limited upstream. "
+            "Please retry in a few seconds, or switch OPENROUTER_MODEL in .env to a less busy free model."
+        )
+    if code in (401, 403):
+        return "OpenRouter rejected the API key. Please verify OPENROUTER_API_KEY in .env."
+    if code == 404:
+        return "The configured OPENROUTER_MODEL was not found on OpenRouter. Please check the model slug in .env."
+    if 500 <= code < 600:
+        return "The model provider is temporarily unavailable. Please try again shortly."
+    return "The assistant could not reach the language model. Please try again."
 
 logger = get_logger("ai_agent.router")
 
@@ -46,6 +64,17 @@ async def ask_assistant(
     service = AssistantService(session=session, user_id=current_user.id)
     try:
         return await service.ask(payload.question)
+    except ModelHTTPError as e:
+        logger.error(
+            "Assistant upstream error",
+            extra={"status": e.status_code, "model": e.model_name, "error": str(e)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            if e.status_code == 429
+            else status.HTTP_502_BAD_GATEWAY,
+            detail=_upstream_error_message(e),
+        )
     except RuntimeError as e:
         logger.error("Assistant unavailable", extra={"error": str(e)})
         raise HTTPException(
@@ -84,6 +113,15 @@ async def stream_assistant(
                 payload.question, session_id=payload.session_id
             ):
                 yield _sse(event["type"], event)
+        except ModelHTTPError as e:
+            logger.error(
+                "Assistant upstream error",
+                extra={"status": e.status_code, "model": e.model_name, "error": str(e)},
+            )
+            yield _sse(
+                "error",
+                {"type": "error", "message": _upstream_error_message(e)},
+            )
         except RuntimeError as e:
             logger.error("Assistant unavailable", extra={"error": str(e)})
             yield _sse(
