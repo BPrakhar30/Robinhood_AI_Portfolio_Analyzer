@@ -6,9 +6,10 @@ pydantic-settings>=2.7.0
 
 # Database
 sqlalchemy>=2.0.36
+aiosqlite>=0.20.0
 asyncpg>=0.30.0
 alembic>=1.14.0
-psycopg2-binary>=2.9.10
+psycopg2-binary>=2.9.0
 
 # Authentication
 python-jose[cryptography]>=3.3.0
@@ -16,30 +17,39 @@ bcrypt>=4.0.0
 python-multipart>=0.0.18
 
 # Broker Integrations
-robin-stocks>=3.0.6
+robin-stocks>=3.0.0
 plaid-python>=26.0.0
 
 # Encryption
-cryptography>=44.0.0
+cryptography>=42.0.0
 
 # Caching
-redis>=5.2.0
+redis>=3.5.0
 
 # HTTP Client
 httpx>=0.28.0
 
 # Data Processing
-pandas>=2.2.0
-numpy>=2.1.0
+pandas>=1.5.0
+numpy>=1.24.0
 
 # Logging
-python-json-logger>=3.2.0
+python-json-logger>=3.0.0
+
+# Email
+aiosmtplib>=2.0.0
+email-validator>=2.0.0
 
 # AI Assistant
-pydantic-ai-slim[openrouter,mcp,duckduckgo]>=0.0.50
+# pydantic-ai-slim carries the google (Gemini), mcp, and duckduckgo optional extras.
+# ``openrouter`` is kept for backwards-compat; drop if you don't need it.
+pydantic-ai>=1.0.0
+pydantic-ai-slim[google,openrouter,mcp,duckduckgo]>=1.0.0
+fastmcp>=3.0.0
 
-# Email validation
-email-validator>=2.0.0
+# Observability (Pydantic Logfire)
+# Instruments FastAPI, SQLAlchemy (via asyncpg), HTTPX, PydanticAI, and system metrics.
+logfire[fastapi,sqlalchemy,httpx,asyncpg,system-metrics]>=4.0.0
 
 # Testing
 pytest>=8.3.0
