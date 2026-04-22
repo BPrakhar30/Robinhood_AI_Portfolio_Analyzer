@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.chat.service import (
     SessionNotFound,
     append_chat_message,
+    list_titles_for_user,
     load_session_for_agent,
     persist_agent_turn,
 )
@@ -25,14 +26,12 @@ from app.utils.logging import get_logger
 
 from .agent import AssistantDeps, get_agent
 from .models import AssistantAnswer
+from .title import generate_session_title
 
 logger = get_logger("ai_agent.service")
 
 # Replay window sent to the LLM (storage is uncapped). ~20 turns.
 _HISTORY_WINDOW = 40
-
-# Chars of the first prompt used as an auto-derived session title.
-_AUTO_TITLE_LEN = 60
 
 
 def _collect_tools_used(result) -> list[str]:
@@ -176,7 +175,19 @@ class AssistantService:
         if session_id is not None and chat_session is not None:
             new_title: Optional[str] = None
             if chat_session.title.strip().lower() in ("", "new chat"):
-                new_title = (question[:_AUTO_TITLE_LEN]).strip() or chat_session.title
+                # Only the first turn of a session triggers the LLM titler.
+                # Subsequent turns keep whatever name the user / model chose.
+                existing_titles = await list_titles_for_user(
+                    self._db,
+                    self._user_id,
+                    exclude_session_id=session_id,
+                )
+                generated = await generate_session_title(
+                    question=question,
+                    answer=final_text,
+                    existing_titles=existing_titles,
+                )
+                new_title = generated or chat_session.title
 
             await append_chat_message(
                 self._db,
