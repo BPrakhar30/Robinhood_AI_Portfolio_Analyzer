@@ -96,12 +96,13 @@ async def patch_chat_session(
 @router.delete(
     "/sessions/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
 )
 async def delete_chat_session(
     session_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
-) -> None:
+):
     """Hard-delete a session and its messages."""
     try:
         await delete_session(db, session_id, current_user.id)
