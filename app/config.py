@@ -77,12 +77,25 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 
-    # AI Assistant (PydanticAI + OpenRouter)
+    # AI Assistant (PydanticAI + Google Gemini, via Google AI Studio free tier)
+    google_api_key: str = ""
+    google_model: str = "gemini-2.5-flash"
+
+    # Legacy OpenRouter fields (kept for backwards-compat; unused if google_api_key is set)
     openrouter_api_key: str = ""
     openrouter_model: str = "meta-llama/llama-3.3-70b-instruct:free"
 
     # MCP portfolio tools (Streamable HTTP). Compose default; override for bare-metal.
     mcp_server_url: str = "http://mcp-server:8765/mcp"
+
+    # Observability (Pydantic Logfire)
+    # Leave token empty to disable cloud shipping — Logfire becomes a no-op locally.
+    # Get a free token at https://logfire.pydantic.dev (10M spans/month free tier).
+    logfire_token: str = ""
+    # Also emit spans to the console in dev for quick inspection without the web UI.
+    logfire_console: bool = True
+    # Scrub user questions / LLM prompts from Logfire exports. Turn off for debugging.
+    logfire_scrub_prompts: bool = False
 
     model_config = {
         "env_file": str(_ENV_FILE),
