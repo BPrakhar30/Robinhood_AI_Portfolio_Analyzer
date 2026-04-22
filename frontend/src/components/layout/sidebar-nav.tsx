@@ -74,7 +74,7 @@ export function SidebarNav() {
     <aside
       className={cn(
         "hidden md:flex flex-col border-r border-border bg-sidebar h-screen sticky top-0 transition-all duration-200",
-        collapsed ? "w-16" : "w-60"
+        collapsed ? "w-16" : "w-52"
       )}
     >
       <Link href="/dashboard" className="flex items-center gap-2 px-4 h-14 border-b border-border shrink-0 cursor-pointer hover:bg-accent/50 transition-colors">

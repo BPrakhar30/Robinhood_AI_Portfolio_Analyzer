@@ -8,9 +8,11 @@ import type { AllocationBreakdown } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-const RING_COLOR = "hsl(239, 70%, 62%)";
-const RING_ACTIVE = "hsl(239, 84%, 42%)";
-const RING_DIM = "hsl(239, 50%, 76%)";
+// Amber palette matches the Incognito accent + assistant link color so the
+// app reads as one product. amber-500 / 600 / 200 (Tailwind values in HSL).
+const RING_COLOR = "hsl(38, 92%, 50%)";
+const RING_ACTIVE = "hsl(38, 92%, 50%)";
+const RING_DIM = "hsl(36, 82.50%, 75.30%)";
 
 interface AllocationSectionProps {
   title: string;
@@ -63,17 +65,11 @@ export function AllocationSection({ title, data }: AllocationSectionProps) {
                   className={cn(
                     "flex items-center justify-between w-full text-sm px-3 py-2.5 rounded-lg transition-colors text-left cursor-pointer",
                     isExpanded
-                      ? "bg-indigo-50 dark:bg-indigo-950/40"
+                      ? "bg-amber-50 dark:bg-amber-950/30"
                       : "hover:bg-muted/50"
                   )}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className="h-3 w-3 rounded-full shrink-0 transition-colors"
-                      style={{
-                        backgroundColor: isExpanded ? RING_ACTIVE : RING_COLOR,
-                      }}
-                    />
+                  <div className="flex items-center min-w-0">
                     <span className={cn("truncate", isExpanded && "font-medium")}>
                       {item.label}
                     </span>
@@ -133,8 +129,13 @@ export function AllocationSection({ title, data }: AllocationSectionProps) {
 
         {/* Donut ring — sticky on desktop */}
         <div className="w-full md:w-56 lg:w-64 shrink-0 self-start md:sticky md:top-4">
-          <div className="relative h-56 lg:h-64 [&_.recharts-sector]:outline-none [&_.recharts-pie]:outline-none">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="relative h-56 lg:h-64 min-w-0 [&_.recharts-sector]:outline-none [&_.recharts-pie]:outline-none">
+            {/* ``minWidth`` / ``minHeight`` of 0 suppress Recharts' "-1 dims"
+                preflight warning that otherwise fires on every chart during
+                hydration and sticky-recalc in dev (StrictMode × 5 sections
+                ≈ 10 warnings per page load). See
+                https://github.com/recharts/recharts/issues/1423. */}
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={data}
