@@ -54,11 +54,14 @@ const components: Components = {
     </em>
   ),
   a: ({ children, href, ...props }) => (
+    // Amber matches the Incognito accent for visual consistency between
+    // persisted and ephemeral chats; stands out cleanly against the muted
+    // assistant bubble background.
     <a
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="text-primary underline underline-offset-2 hover:no-underline"
+      className="text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline"
       {...props}
     >
       {children}

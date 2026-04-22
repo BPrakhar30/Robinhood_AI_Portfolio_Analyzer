@@ -9,8 +9,6 @@ import {
   MoreHorizontal,
   Pencil,
   Star,
-  Archive,
-  ArchiveRestore,
   PanelLeftClose,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,14 +24,18 @@ import { useChatStore } from "./store";
 import { cn } from "@/lib/utils";
 
 const MIN_WIDTH = 200;
-const MAX_WIDTH = 360;
-const DEFAULT_WIDTH = 240;
+const MAX_WIDTH = 250;
+const DEFAULT_WIDTH = 230;
 
 interface ChatSidebarProps {
   onClose?: () => void;
+  /** Optional override for the new-chat button (e.g. clear active session
+   *  instead of creating a row up-front). Defaults to calling
+   *  ``createSession`` so the sidebar remains usable on its own. */
+  onNewChat?: () => void;
 }
 
-export function ChatSidebar({ onClose }: ChatSidebarProps) {
+export function ChatSidebar({ onClose, onNewChat }: ChatSidebarProps) {
   const {
     sessions,
     activeSessionId,
@@ -42,11 +44,9 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
     deleteSession,
     renameSession,
     toggleStar,
-    toggleArchive,
   } = useChatStore();
 
   const [search, setSearch] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -97,8 +97,8 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
     setRenamingId(null);
   };
 
-  /* ── Filtered lists ── */
-  const visible = sessions.filter((s) => s.archived === showArchived);
+  /* ── Filtered lists (archive filter removed) ── */
+  const visible = sessions.filter((s) => !s.archived);
   const filtered = search
     ? visible.filter(
         (s) =>
@@ -121,10 +121,7 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
         <Button
           className="w-full justify-start gap-2 h-8"
           size="sm"
-          onClick={() => {
-            setShowArchived(false);
-            createSession();
-          }}
+          onClick={() => (onNewChat ? onNewChat() : createSession())}
         >
           <Plus className="h-4 w-4" />
           New chat
@@ -141,61 +138,19 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
         </div>
       </div>
 
-      {/* Archive toggle */}
-      <div className="flex border-b border-border shrink-0">
-        <button
-          type="button"
-          onClick={() => setShowArchived(false)}
-          className={cn(
-            "flex-1 py-1.5 text-[11px] font-medium transition-colors cursor-pointer",
-            !showArchived
-              ? "text-foreground border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Chats
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowArchived(true)}
-          className={cn(
-            "flex-1 py-1.5 text-[11px] font-medium transition-colors cursor-pointer",
-            showArchived
-              ? "text-foreground border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Archived
-        </button>
-      </div>
-
       {/* Chat list */}
       <div className="flex-1 overflow-y-auto py-1">
         {filtered.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            {showArchived ? (
-              <>
-                <Archive className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">
-                  {search ? "No archived chats match your search" : "No archived chats"}
-                </p>
-                <p className="text-[11px] text-muted-foreground/60 mt-1">
-                  Archive chats you want to keep but hide from your main list
-                </p>
-              </>
-            ) : (
-              <>
-                <MessageSquare className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">
-                  {search ? "No chats match your search" : "No conversations yet"}
-                </p>
-              </>
-            )}
+            <MessageSquare className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-xs text-muted-foreground">
+              {search ? "No chats match your search" : "No conversations yet"}
+            </p>
           </div>
         ) : (
           <>
             {/* Starred section */}
-            {starred.length > 0 && !showArchived && (
+            {starred.length > 0 && (
               <>
                 <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                   Starred
@@ -208,13 +163,11 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
                     isRenaming={session.id === renamingId}
                     renameValue={renameValue}
                     renameInputRef={renameInputRef}
-                    showArchived={showArchived}
                     onSelect={() => setActiveSession(session.id)}
                     onStartRename={() => startRename(session.id, session.title)}
                     onRenameChange={setRenameValue}
                     onCommitRename={commitRename}
                     onToggleStar={() => toggleStar(session.id)}
-                    onToggleArchive={() => toggleArchive(session.id)}
                     onDelete={() => deleteSession(session.id)}
                   />
                 ))}
@@ -224,7 +177,7 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
             {/* Regular / unstarred section */}
             {unstarred.length > 0 && (
               <>
-                {starred.length > 0 && !showArchived && (
+                {starred.length > 0 && (
                   <p className="px-3 pt-3 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                     Recent
                   </p>
@@ -237,13 +190,11 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
                     isRenaming={session.id === renamingId}
                     renameValue={renameValue}
                     renameInputRef={renameInputRef}
-                    showArchived={showArchived}
                     onSelect={() => setActiveSession(session.id)}
                     onStartRename={() => startRename(session.id, session.title)}
                     onRenameChange={setRenameValue}
                     onCommitRename={commitRename}
                     onToggleStar={() => toggleStar(session.id)}
-                    onToggleArchive={() => toggleArchive(session.id)}
                     onDelete={() => deleteSession(session.id)}
                   />
                 ))}
@@ -285,13 +236,11 @@ interface ChatRowProps {
   isRenaming: boolean;
   renameValue: string;
   renameInputRef: React.RefObject<HTMLInputElement | null>;
-  showArchived: boolean;
   onSelect: () => void;
   onStartRename: () => void;
   onRenameChange: (v: string) => void;
   onCommitRename: () => void;
   onToggleStar: () => void;
-  onToggleArchive: () => void;
   onDelete: () => void;
 }
 
@@ -301,13 +250,11 @@ function ChatRow({
   isRenaming,
   renameValue,
   renameInputRef,
-  showArchived,
   onSelect,
   onStartRename,
   onRenameChange,
   onCommitRename,
   onToggleStar,
-  onToggleArchive,
   onDelete,
 }: ChatRowProps) {
   return (
@@ -382,25 +329,6 @@ function ChatRow({
               )}
             />
             {session.starred ? "Unstar" : "Star"}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleArchive();
-            }}
-          >
-            {showArchived ? (
-              <>
-                <ArchiveRestore className="h-3.5 w-3.5 mr-2" />
-                Unarchive
-              </>
-            ) : (
-              <>
-                <Archive className="h-3.5 w-3.5 mr-2" />
-                Archive
-              </>
-            )}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
