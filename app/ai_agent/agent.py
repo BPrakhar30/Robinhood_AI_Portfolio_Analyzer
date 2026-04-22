@@ -1,10 +1,10 @@
-"""PydanticAI agent wired to OpenRouter + our MCP portfolio-tools server.
+"""PydanticAI agent wired to Google Gemini + our MCP portfolio-tools server.
 
 Security: the LLM never sees or submits ``user_id``. ``process_tool_call``
 stamps it as MCP metadata on every call. The agent holds no DB creds or
 session — tool execution happens in the ``mcp-server`` container.
 
-Construction is lazy so a missing ``OPENROUTER_API_KEY`` doesn't break
+Construction is lazy so a missing ``GOOGLE_API_KEY`` doesn't break
 non-AI endpoints at import time.
 """
 
@@ -18,8 +18,8 @@ from uuid import UUID
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool
 from pydantic_ai.mcp import CallToolFunc, MCPServerStreamableHTTP, ToolResult
-from pydantic_ai.models.openrouter import OpenRouterModel
-from pydantic_ai.providers.openrouter import OpenRouterProvider
+from pydantic_ai.models.google import GoogleModel
+from pydantic_ai.providers.google import GoogleProvider
 
 from app.config import get_settings
 
@@ -49,14 +49,15 @@ async def _inject_user_id(
 def _build_agent() -> Agent[AssistantDeps, str]:
     settings = get_settings()
 
-    if not settings.openrouter_api_key:
+    if not settings.google_api_key:
         raise RuntimeError(
-            "OPENROUTER_API_KEY is not configured. Set it in .env to enable the assistant."
+            "GOOGLE_API_KEY is not configured. Set it in .env to enable the assistant. "
+            "Get a free key at https://aistudio.google.com/apikey"
         )
 
-    model = OpenRouterModel(
-        settings.openrouter_model,
-        provider=OpenRouterProvider(api_key=settings.openrouter_api_key),
+    model = GoogleModel(
+        settings.google_model,
+        provider=GoogleProvider(api_key=settings.google_api_key),
     )
 
     mcp_server = MCPServerStreamableHTTP(
