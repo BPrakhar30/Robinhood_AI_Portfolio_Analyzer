@@ -17,13 +17,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   useMarketNews,
   useEarningsCalendar,
   useEarningsForDate,
+  useEarningsHighlights,
 } from "@/features/markets/hooks";
 import type {
   MarketHeadline,
+  MarketSource,
   RecentDevelopment,
   EarningsEntry,
   EarningsDay,
@@ -66,27 +70,17 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-const SOURCE_URLS: Record<string, string> = {
-  "CNBC": "https://www.cnbc.com/markets",
-  "CNBC Economy": "https://www.cnbc.com/economy",
-  "CNBC Earnings": "https://www.cnbc.com/earnings",
-  "Reuters": "https://www.reuters.com/markets",
-  "Investing.com": "https://www.investing.com/news",
-  "Yahoo Finance": "https://finance.yahoo.com",
-  "Forbes": "https://www.forbes.com/money",
-  "FXStreet": "https://www.fxstreet.com/news",
-  "FRED Blog": "https://fredblog.stlouisfed.org",
-  "Google News Business": "https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB",
-  "Trading Economics": "https://tradingeconomics.com/news",
-  "Bloomberg": "https://www.bloomberg.com/markets",
-  "MarketWatch": "https://www.marketwatch.com",
-  "Finnhub": "https://finnhub.io",
-};
-
 // ── Components ─────────────────────────────────────────────────────
 
-function MarketSummaryItem({ title, summary }: MarketHeadline) {
+function MarketSummaryItem({
+  title,
+  summary,
+  ai_summary,
+  source,
+  url,
+}: MarketHeadline) {
   const [open, setOpen] = useState(false);
+  const body = ai_summary?.trim() || summary?.trim() || "";
 
   return (
     <div className="border-b border-border last:border-0">
@@ -104,11 +98,36 @@ function MarketSummaryItem({ title, summary }: MarketHeadline) {
         />
       </button>
       {open && (
-        <div className="px-4 pb-4 -mt-1">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {summary}
-          </p>
-          {/* source link removed from accordion — shown globally below */}
+        <div className="px-4 pb-4 -mt-1 space-y-2">
+          {body ? (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {body}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              Generating AI summary…
+            </p>
+          )}
+          {(source || url) && (
+            <div className="flex items-center gap-2 pt-1">
+              {source && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                  {source}
+                </Badge>
+              )}
+              {url && (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Read full article
+                  <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -120,8 +139,10 @@ function RecentDevelopmentCard({
   time_ago: ta,
   title,
   excerpt,
+  ai_summary,
   url,
 }: RecentDevelopment) {
+  const body = ai_summary?.trim() || excerpt?.trim() || "";
   return (
     <a
       href={url || "#"}
@@ -141,7 +162,7 @@ function RecentDevelopmentCard({
             {title}
           </h4>
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
-            {excerpt}
+            {body}
           </p>
         </CardContent>
       </Card>
@@ -357,6 +378,12 @@ function EarningsDetailView({
   onBack: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"highlights" | "transcript" | "documents">("highlights");
+  const {
+    data: highlights,
+    isLoading: highlightsLoading,
+    isError: highlightsError,
+    error: highlightsErr,
+  } = useEarningsHighlights(activeTab === "highlights" ? entry : null);
 
   const revBeat = beatLabel(entry.revenue_estimate, entry.revenue_actual);
   const epsBeat = beatLabel(entry.eps_estimate, entry.eps_actual);
@@ -464,24 +491,40 @@ function EarningsDetailView({
 
         <div className="pt-4">
           {activeTab === "highlights" && (
-            <div className="text-center py-10">
-              <p className="text-sm text-muted-foreground">
-                AI-generated highlights will appear here once the LLM pipeline is connected.
-              </p>
-            </div>
+            <>
+              {highlightsLoading ? (
+                <div className="flex items-center justify-center py-10 gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating highlights…
+                </div>
+              ) : highlightsError ? (
+                <div className="py-6 text-sm text-muted-foreground">
+                  Highlights unavailable right now
+                  {highlightsErr instanceof Error && highlightsErr.message
+                    ? `: ${highlightsErr.message}`
+                    : "."}
+                </div>
+              ) : highlights?.highlights ? (
+                <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {highlights.highlights}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <div className="py-6 text-sm text-muted-foreground">
+                  No highlights returned for this earnings event.
+                </div>
+              )}
+            </>
           )}
           {activeTab === "transcript" && (
-            <div className="text-center py-10">
-              <p className="text-sm text-muted-foreground">
-                Transcript will be generated using AI when available.
-              </p>
+            <div className="text-center py-10 text-sm text-muted-foreground">
+              Full earnings-call transcript summarization is coming soon.
             </div>
           )}
           {activeTab === "documents" && (
-            <div className="text-center py-10">
-              <p className="text-sm text-muted-foreground">
-                SEC filings and press releases will appear here when available.
-              </p>
+            <div className="text-center py-10 text-sm text-muted-foreground">
+              SEC filings and press releases will surface here as they become available.
             </div>
           )}
         </div>
@@ -519,18 +562,21 @@ export default function MarketsPage() {
   const headlines: MarketHeadline[] = newsData?.summary?.headlines ?? [];
   const developments: RecentDevelopment[] = newsData?.developments?.articles ?? [];
   const updatedAt = newsData?.summary?.updated_at;
-  const apiSources: string[] = newsData?.sources ?? [];
+  const apiSources: MarketSource[] = newsData?.sources ?? [];
 
   const calendarDays: EarningsDay[] = calendarData?.week ?? [];
   const earningsEntries: EarningsEntry[] = earningsData?.entries ?? [];
 
-  const liveSources = useMemo(() => {
+  const liveSources: MarketSource[] = useMemo(() => {
     if (apiSources.length > 0) return apiSources;
-    const seen = new Set<string>();
+    // Derive a bare-minimum list from headlines if the API didn't return sources.
+    const seen = new Map<string, MarketSource>();
     for (const h of headlines) {
-      if (h.source) seen.add(h.source);
+      if (h.source && !seen.has(h.source)) {
+        seen.set(h.source, { name: h.source, url: "" });
+      }
     }
-    return Array.from(seen);
+    return Array.from(seen.values());
   }, [apiSources, headlines]);
 
   return (
@@ -602,18 +648,27 @@ export default function MarketsPage() {
                   </Card>
                 )}
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-3">
-                  {liveSources.map((name) => (
-                    <a
-                      key={name}
-                      href={SOURCE_URLS[name] ?? "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {name}
-                      <ExternalLink className="h-2.5 w-2.5" />
-                    </a>
-                  ))}
+                  {liveSources.map((src) =>
+                    src.url ? (
+                      <a
+                        key={src.name}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {src.name}
+                        <ExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    ) : (
+                      <span
+                        key={src.name}
+                        className="text-[11px] text-muted-foreground"
+                      >
+                        {src.name}
+                      </span>
+                    )
+                  )}
                   <span className="text-[11px] text-muted-foreground ml-1">
                     · {liveSources.length} sources
                   </span>
