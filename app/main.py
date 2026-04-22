@@ -21,6 +21,7 @@ from app.ai_agent.router import router as assistant_router
 from app.chat.router import router as chat_router
 from app.utils.exceptions import AppException
 from app.utils.logging import get_logger
+from app.utils.observability import setup_logfire
 
 logger = get_logger("main")
 settings = get_settings()
@@ -28,9 +29,16 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Logfire is set up here (not at import time) so FastAPI is fully
+    # constructed before instrumentation wraps its routes.
+    setup_logfire(service_name="robinhood-ai-backend", app=app)
     logger.info(
         "Application starting",
-        extra={"event": "app_start", "env": settings.app_env.value},
+        extra={
+            "event": "app_start",
+            "env": settings.app_env.value,
+            "logfire": bool(settings.logfire_token),
+        },
     )
     if settings.app_env.value == "development":
         await init_db()
@@ -49,9 +57,15 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,
 )
 
+_DEV_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.debug else [],
+    allow_origins=_DEV_ORIGINS if settings.debug else [settings.frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
