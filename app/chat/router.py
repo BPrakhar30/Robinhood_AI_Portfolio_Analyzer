@@ -16,7 +16,10 @@ from app.database.engine import get_async_session
 from app.database.models import User
 from app.utils.logging import get_logger
 
+from pydantic import BaseModel, Field
+
 from .schemas import (
+    ChatMessageOut,
     ChatSessionCreate,
     ChatSessionDetail,
     ChatSessionOut,
@@ -28,8 +31,15 @@ from .service import (
     delete_session,
     get_session_detail,
     list_sessions,
+    truncate_messages,
     update_session,
 )
+
+
+class TruncatePayload(BaseModel):
+    """Drop messages at ``from_index`` and beyond."""
+
+    from_index: int = Field(..., ge=0)
 
 logger = get_logger("chat.router")
 
@@ -89,6 +99,30 @@ async def patch_chat_session(
     """Partial update: title / starred / archived."""
     try:
         return await update_session(db, session_id, current_user.id, patch)
+    except SessionNotFound:
+        raise _not_found()
+
+
+@router.post(
+    "/sessions/{session_id}/messages/truncate",
+    response_model=list[ChatMessageOut],
+)
+async def truncate_chat_messages(
+    session_id: UUID,
+    payload: TruncatePayload,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> list[ChatMessageOut]:
+    """Remove all messages at ``from_index`` and beyond.
+
+    Backs the edit / regenerate flows on the client: when a user rewrites an
+    earlier message, we drop everything after the edit point so the next
+    turn starts with a clean slate instead of replaying stale context.
+    """
+    try:
+        return await truncate_messages(
+            db, session_id, current_user.id, payload.from_index
+        )
     except SessionNotFound:
         raise _not_found()
 

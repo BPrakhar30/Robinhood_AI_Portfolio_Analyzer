@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Iterable, Optional
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -73,6 +73,24 @@ async def _get_owned_session(
     if session is None:
         raise SessionNotFound(f"session {session_id} not found for user")
     return session
+
+
+async def list_titles_for_user(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    exclude_session_id: Optional[UUID] = None,
+) -> list[str]:
+    """Return current non-empty titles for a user.
+
+    Used by the auto-titler to avoid colliding with sessions the user
+    already has on their sidebar.
+    """
+    stmt = select(ChatSession.title).where(ChatSession.user_id == user_id)
+    if exclude_session_id is not None:
+        stmt = stmt.where(ChatSession.id != exclude_session_id)
+    result = await db.execute(stmt)
+    return [t for t in result.scalars().all() if t and t.strip()]
 
 
 async def list_sessions(db: AsyncSession, user_id: UUID) -> list[ChatSessionOut]:
@@ -197,6 +215,51 @@ async def append_chat_message(
     db.add(msg)
     await db.flush()
     return msg
+
+
+async def truncate_messages(
+    db: AsyncSession,
+    session_id: UUID,
+    user_id: UUID,
+    from_index: int,
+) -> list[ChatMessageOut]:
+    """Drop messages at ``from_index`` and beyond; reset ``agent_history``.
+
+    Used by edit / regenerate flows: the client truncates the visible
+    transcript, we mirror that in the DB, and the next turn begins with
+    a clean agent history (no stale tool calls or hallucinated context).
+
+    Returns the surviving messages (chronological, oldest → newest).
+    """
+    session = await _get_owned_session(db, session_id, user_id, with_messages=True)
+    if from_index < 0:
+        from_index = 0
+
+    ordered = sorted(session.messages, key=lambda m: (m.created_at, m.id))
+    if from_index >= len(ordered):
+        return [ChatMessageOut.model_validate(m) for m in ordered]
+
+    doomed_ids = [m.id for m in ordered[from_index:]]
+    if doomed_ids:
+        await db.execute(
+            delete(ChatMessage).where(ChatMessage.id.in_(doomed_ids))
+        )
+    # Reset agent replay buffer; the next turn rebuilds context from scratch.
+    session.agent_history = None
+    await db.flush()
+
+    logger.info(
+        "Chat messages truncated",
+        extra={
+            "event": "chat_messages_truncated",
+            "user_id": str(user_id),
+            "session_id": str(session_id),
+            "from_index": from_index,
+            "removed": len(doomed_ids),
+        },
+    )
+
+    return [ChatMessageOut.model_validate(m) for m in ordered[:from_index]]
 
 
 async def persist_agent_turn(

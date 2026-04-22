@@ -12,6 +12,7 @@ import {
   deleteChatSession,
   getChatSession,
   listChatSessions,
+  truncateChatMessages,
   updateChatSession,
 } from "./api";
 import type { ChatMessage, ChatSession } from "./types";
@@ -35,6 +36,7 @@ interface ChatStore {
   setActiveSession: (id: string | null) => Promise<void>;
   addMessage: (sessionId: string, message: ChatMessage) => void;
   appendToMessage: (sessionId: string, messageId: string, delta: string) => void;
+  truncateMessages: (sessionId: string, fromIndex: number) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   renameSession: (id: string, title: string) => Promise<void>;
   toggleStar: (id: string) => Promise<void>;
@@ -173,6 +175,30 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         sessions,
       };
     }),
+
+  truncateMessages: async (sessionId, fromIndex) => {
+    const prev = get();
+    const existing = prev.messages[sessionId] ?? [];
+    if (fromIndex < 0 || fromIndex >= existing.length) return;
+
+    // Optimistic local truncation — edit / regenerate flows rely on the
+    // UI updating before the network round-trip completes.
+    const trimmed = existing.slice(0, fromIndex);
+    set((s) => ({
+      messages: { ...s.messages, [sessionId]: trimmed },
+    }));
+
+    try {
+      await truncateChatMessages(sessionId, fromIndex);
+    } catch (err) {
+      console.error("Failed to truncate chat messages", err);
+      // Rollback so the UI stays consistent with the server, then surface
+      // the error so callers (edit / regenerate) abort the follow-up
+      // stream instead of appending a duplicate turn.
+      set({ messages: prev.messages });
+      throw err;
+    }
+  },
 
   deleteSession: async (id) => {
     const prev = get();

@@ -214,3 +214,14 @@ export async function updateChatSession(
 export async function deleteChatSession(id: string): Promise<void> {
   await api.delete<void>(`/api/v1/chat/sessions/${id}`);
 }
+
+export async function truncateChatMessages(
+  id: string,
+  fromIndex: number,
+): Promise<ChatMessage[]> {
+  const raw = await api.post<ChatMessageDTO[]>(
+    `/api/v1/chat/sessions/${id}/messages/truncate`,
+    { from_index: fromIndex },
+  );
+  return raw.map(toMessage);
+}
