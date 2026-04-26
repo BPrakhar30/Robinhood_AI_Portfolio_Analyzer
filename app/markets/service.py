@@ -1,5 +1,4 @@
-"""Market data service: aggregates news from multiple free RSS feeds + Finnhub,
-and earnings data from Finnhub.
+"""Market data service: aggregates broad market news from free RSS feeds + Finnhub.
 
 News sources (all free, no API key required for RSS):
   Finnhub /news (requires finnhub_api_key), CNBC, Reuters, Investing.com,
@@ -7,6 +6,10 @@ News sources (all free, no API key required for RSS):
 
 Uses httpx for async HTTP, xml.etree for RSS parsing, and in-memory caching
 with TTLs to avoid hammering upstream sources.
+
+Per-symbol market data (quotes, candles, profiles, earnings, company news)
+lives in ``app/stocks/`` — this module is intentionally scoped to broad
+cross-market headlines only.
 """
 
 from __future__ import annotations
@@ -14,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from urllib.parse import urlparse
 
@@ -37,7 +40,6 @@ MAX_PER_SOURCE = 2
 
 _cache: dict[str, tuple[float, object]] = {}
 NEWS_TTL = 300  # 5 min
-EARNINGS_TTL = 900  # 15 min
 RSS_TTL = 600  # 10 min
 
 RSS_FEEDS: list[dict[str, str]] = [
@@ -439,181 +441,6 @@ async def _fetch_finnhub_news() -> list[dict]:
     return items
 
 
-# ── Earnings (unchanged — Finnhub only) ─────────────────────────────
-
-
-async def fetch_earnings_calendar(target_date: str | None = None) -> dict:
-    """Fetch earnings calendar for the week containing *target_date*."""
-    today = datetime.now(timezone.utc).date()
-    if target_date:
-        try:
-            center = datetime.strptime(target_date, "%Y-%m-%d").date()
-        except ValueError:
-            center = today
-    else:
-        center = today
-
-    weekday = center.isoweekday() % 7
-    week_start = center - timedelta(days=weekday)
-    week_end = week_start + timedelta(days=6)
-
-    cache_key = f"earnings_{week_start.isoformat()}"
-    cached = _cache_get(cache_key, EARNINGS_TTL)
-    if cached:
-        return cached
-
-    settings = get_settings()
-    api_key = settings.finnhub_api_key.strip()
-    if not api_key:
-        logger.warning("Finnhub API key not set; returning empty earnings")
-        return _empty_earnings_week(week_start, today)
-
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                f"{FINNHUB_BASE}/calendar/earnings",
-                params={
-                    "from": week_start.isoformat(),
-                    "to": week_end.isoformat(),
-                    "token": api_key,
-                },
-            )
-            resp.raise_for_status()
-            raw = resp.json()
-    except Exception as exc:
-        logger.error(f"Finnhub earnings fetch failed: {exc}")
-        return _empty_earnings_week(week_start, today)
-
-    earnings_list = raw.get("earningsCalendar", [])
-
-    by_date: dict[str, list[dict]] = {}
-    for e in earnings_list:
-        d = e.get("date", "")
-        by_date.setdefault(d, []).append(e)
-
-    day_labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    week = []
-    for i in range(7):
-        day = week_start + timedelta(days=i)
-        day_str = day.isoformat()
-        entries = by_date.get(day_str, [])
-        week.append(
-            {
-                "date": day_str,
-                "day_label": day_labels[i],
-                "earnings_count": len(entries),
-                "symbols": [e.get("symbol", "") for e in entries[:5]],
-            }
-        )
-
-    result = {
-        "week": week,
-        "selected_date": center.isoformat(),
-    }
-    _cache_set(cache_key, result)
-    return result
-
-
-async def fetch_earnings_for_date(date: str) -> dict:
-    """Return detailed earnings entries for a specific date."""
-    cache_key = f"earnings_detail_{date}"
-    cached = _cache_get(cache_key, EARNINGS_TTL)
-    if cached:
-        return cached
-
-    settings = get_settings()
-    api_key = settings.finnhub_api_key.strip()
-    if not api_key:
-        return {"entries": [], "date": date}
-
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                f"{FINNHUB_BASE}/calendar/earnings",
-                params={"from": date, "to": date, "token": api_key},
-            )
-            resp.raise_for_status()
-            raw = resp.json()
-    except Exception as exc:
-        logger.error(f"Finnhub earnings detail fetch failed: {exc}")
-        return {"entries": [], "date": date}
-
-    entries = []
-    for e in raw.get("earningsCalendar", []):
-        hour_raw = e.get("hour", "")
-        if hour_raw == "bmo":
-            hour_display = "Before Open"
-        elif hour_raw == "amc":
-            hour_display = "After Close"
-        else:
-            hour_display = hour_raw or "TBD"
-
-        entries.append(
-            {
-                "symbol": e.get("symbol", ""),
-                "company": e.get("symbol", ""),
-                "date": e.get("date", date),
-                "hour": hour_display,
-                "quarter": e.get("quarter", 0),
-                "year": e.get("year", 0),
-                "eps_estimate": e.get("epsEstimate"),
-                "eps_actual": e.get("epsActual"),
-                "revenue_estimate": e.get("revenueEstimate"),
-                "revenue_actual": e.get("revenueActual"),
-            }
-        )
-
-    symbols_to_resolve = [e["symbol"] for e in entries if e["symbol"]]
-    if symbols_to_resolve and api_key:
-        try:
-            profiles = await _batch_profiles(symbols_to_resolve[:20], api_key)
-            for e in entries:
-                if e["symbol"] in profiles:
-                    e["company"] = profiles[e["symbol"]]
-        except Exception:
-            pass
-
-    result = {"entries": entries, "date": date}
-    _cache_set(cache_key, result)
-    return result
-
-
-async def _batch_profiles(symbols: list[str], api_key: str) -> dict[str, str]:
-    """Fetch company names for a batch of symbols. Cached per-symbol."""
-    _profile_cache_key = "company_profiles"
-    profiles = _cache_get(_profile_cache_key, 86400) or {}
-    missing = [s for s in symbols if s not in profiles]
-
-    if missing:
-        async with httpx.AsyncClient(timeout=10) as client:
-            for sym in missing[:20]:
-                try:
-                    resp = await client.get(
-                        f"{FINNHUB_BASE}/stock/profile2",
-                        params={"symbol": sym, "token": api_key},
-                    )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        name = data.get("name", sym)
-                        profiles[sym] = name if name else sym
-                except Exception:
-                    profiles[sym] = sym
-        _cache_set(_profile_cache_key, profiles)
-
-    return profiles
-
-
-def _empty_earnings_week(week_start, today) -> dict:
-    day_labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    week = []
-    for i in range(7):
-        day = week_start + timedelta(days=i)
-        week.append(
-            {
-                "date": day.isoformat(),
-                "day_label": day_labels[i],
-                "earnings_count": 0,
-                "symbols": [],
-            }
-        )
-    return {"week": week, "selected_date": today.isoformat()}
+# NOTE: Earnings endpoints (weekly calendar, per-date detail, AI highlights)
+# have moved to ``app/stocks/`` where they belong alongside the rest of the
+# per-symbol market data surface.

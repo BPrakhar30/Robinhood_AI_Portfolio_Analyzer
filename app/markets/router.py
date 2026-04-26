@@ -1,22 +1,28 @@
-from datetime import datetime, timezone
+"""Markets HTTP surface: macro news + portfolio-specific news.
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+Earnings endpoints now live in ``app/stocks/`` — the Markets page no
+longer exposes an earnings tab. Keep this router focused on two things:
+
+  * ``GET /markets/news``           — broad market news (RSS + Finnhub).
+  * ``GET /markets/portfolio-news`` — per-holding company-news digest for
+                                      the signed-in user's book.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import get_current_user
-from app.database.models import User
+from app.database.engine import get_async_session
+from app.database.models import Position, User
+from app.stocks.schemas import PortfolioNewsResponse
+from app.stocks.service import aggregate_portfolio_news
 
-from .ai_service import enrich_news_payload, generate_earnings_highlights
-from .schemas import (
-    EarningsCalendarResponse,
-    EarningsHighlightsResponse,
-    EarningsListResponse,
-    MarketNewsResponse,
-)
-from .service import (
-    fetch_earnings_calendar,
-    fetch_earnings_for_date,
-    fetch_market_news,
-)
+from .ai_service import enrich_portfolio_news
+from .schemas import MarketNewsResponse
+from .service import fetch_market_news
 
 router = APIRouter(prefix="/markets", tags=["markets"])
 
@@ -30,6 +36,8 @@ async def get_market_news(current_user: User = Depends(get_current_user)):
     payload and cached for 30 minutes per article URL, so the AI path stays
     well within free-tier rate limits.
     """
+    from .ai_service import enrich_news_payload
+
     data = await fetch_market_news()
     enriched = await enrich_news_payload(data)
 
@@ -46,66 +54,44 @@ async def get_market_news(current_user: User = Depends(get_current_user)):
     }
 
 
-@router.get("/earnings/calendar", response_model=EarningsCalendarResponse)
-async def get_earnings_calendar(
-    date: str | None = Query(
-        None, description="Center date YYYY-MM-DD; defaults to today"
-    ),
+@router.get("/portfolio-news", response_model=PortfolioNewsResponse)
+async def get_portfolio_news(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
 ):
-    """Weekly earnings calendar strip."""
-    return await fetch_earnings_calendar(date)
+    """News aggregated across every symbol the user currently holds.
 
-
-@router.get("/earnings/date", response_model=EarningsListResponse)
-async def get_earnings_for_date(
-    date: str = Query(..., description="Date YYYY-MM-DD"),
-    current_user: User = Depends(get_current_user),
-):
-    """Detailed earnings entries for a given date."""
-    return await fetch_earnings_for_date(date)
-
-
-@router.get("/earnings/highlights", response_model=EarningsHighlightsResponse)
-async def get_earnings_highlights(
-    symbol: str = Query(..., min_length=1, max_length=12),
-    quarter: int = Query(..., ge=1, le=4),
-    year: int = Query(..., ge=1990, le=2100),
-    company: str = Query("", description="Company display name (optional)"),
-    eps_estimate: float | None = Query(None),
-    eps_actual: float | None = Query(None),
-    revenue_estimate: float | None = Query(None),
-    revenue_actual: float | None = Query(None),
-    reported: bool = Query(True),
-    current_user: User = Depends(get_current_user),
-):
-    """AI-generated highlights brief for a single earnings event.
-
-    Payload is markdown intended for direct rendering in the UI. Output is
-    cached per ``(symbol, quarter, year)`` for 1 hour.
+    Pulls up to 3 recent company-news items per holding, de-duplicates by
+    URL, sorts newest-first, and runs a single batched Gemini call to
+    attach a 3-bullet ``ai_summary`` to each card. When the LLM is offline
+    or rate-limited the endpoint still returns the raw headlines.
     """
-    try:
-        highlights = await generate_earnings_highlights(
-            symbol=symbol,
-            company=company or symbol,
-            quarter=quarter,
-            year=year,
-            eps_estimate=eps_estimate,
-            eps_actual=eps_actual,
-            revenue_estimate=revenue_estimate,
-            revenue_actual=revenue_actual,
-            reported=reported,
-        )
-    except Exception as exc:  # noqa: BLE001 — never bubble raw LLM errors to clients
-        raise HTTPException(
-            status_code=502,
-            detail=f"Earnings AI temporarily unavailable: {exc}",
-        ) from exc
+    stmt = select(Position).where(Position.user_id == current_user.id)
+    positions = (await db.execute(stmt)).scalars().all()
 
-    return {
-        "symbol": symbol.upper(),
-        "quarter": quarter,
-        "year": year,
-        "highlights": highlights,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-    }
+    symbols: list[str] = []
+    seen: set[str] = set()
+    for p in positions:
+        sym = (p.symbol or "").upper()
+        if not sym or sym in seen or (p.quantity or 0) <= 0:
+            continue
+        seen.add(sym)
+        symbols.append(sym)
+
+    agg = await aggregate_portfolio_news(symbols, per_symbol=3, total_limit=24)
+
+    if agg.articles:
+        raw = [
+            {
+                "title": a.headline,
+                "summary": a.summary,
+                "source": a.source,
+                "url": a.url,
+            }
+            for a in agg.articles
+        ]
+        enriched = await enrich_portfolio_news(raw)
+        for card, meta in zip(agg.articles, enriched):
+            card.ai_summary = meta.get("ai_summary")
+
+    return agg
