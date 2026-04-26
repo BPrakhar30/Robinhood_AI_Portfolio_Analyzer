@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import { TrendingUp, Search, ArrowUpDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -105,7 +106,7 @@ export default function PositionsPage() {
       ) : (
         <>
           {/* Search bar */}
-          <div className="relative max-w-sm">
+          <div className="relative w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by ticker or name..."
@@ -124,7 +125,12 @@ export default function PositionsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold">{pos.symbol}</p>
+                          <Link
+                            href={`/markets/${encodeURIComponent(pos.symbol)}`}
+                            className="font-semibold hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                          >
+                            {pos.symbol}
+                          </Link>
                           <Badge variant="outline" className="text-[10px] capitalize">
                             {pos.asset_type}
                           </Badge>
@@ -176,8 +182,8 @@ export default function PositionsPage() {
                 )}
               </div>
 
-              <div className="hidden md:block">
-                <Table>
+              <div className="hidden overflow-x-auto md:block">
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>
@@ -206,7 +212,12 @@ export default function PositionsPage() {
                       <TableRow key={pos.symbol}>
                         <TableCell className="align-top">
                           <div className="min-w-0 space-y-1">
-                            <p className="font-medium">{pos.symbol}</p>
+                            <Link
+                              href={`/markets/${encodeURIComponent(pos.symbol)}`}
+                              className="font-medium hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                            >
+                              {pos.symbol}
+                            </Link>
                             <p className="max-w-[220px] truncate text-sm text-muted-foreground">
                               {pos.name}
                             </p>

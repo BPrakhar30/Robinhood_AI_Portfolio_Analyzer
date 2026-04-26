@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -49,7 +50,7 @@ export function AllocationSection({ title, data }: AllocationSectionProps) {
     <section>
       <h2 className="text-lg font-semibold mb-6">{title}</h2>
 
-      <div className="flex flex-col-reverse md:flex-row gap-8">
+      <div className="flex flex-col-reverse gap-6 lg:flex-row lg:gap-8">
         {/* Data list */}
         <div className="flex-1 min-w-0 space-y-0.5">
           {data.map((item, idx) => {
@@ -63,18 +64,18 @@ export function AllocationSection({ title, data }: AllocationSectionProps) {
                   onMouseEnter={() => setHoveredIndex(idx)}
                   onMouseLeave={() => setHoveredIndex(null)}
                   className={cn(
-                    "flex items-center justify-between w-full text-sm px-3 py-2.5 rounded-lg transition-colors text-left cursor-pointer",
+                    "flex w-full flex-col gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors cursor-pointer sm:flex-row sm:items-center sm:justify-between",
                     isExpanded
                       ? "bg-amber-50 dark:bg-amber-950/30"
                       : "hover:bg-muted/50"
                   )}
                 >
-                  <div className="flex items-center min-w-0">
+                  <div className="flex min-w-0 items-center">
                     <span className={cn("truncate", isExpanded && "font-medium")}>
                       {item.label}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 shrink-0 ml-3">
+                  <div className="flex shrink-0 items-center justify-between gap-4 sm:ml-3 sm:justify-end">
                     <span className="text-muted-foreground tabular-nums">
                       {formatCurrency(item.value)}
                     </span>
@@ -92,14 +93,19 @@ export function AllocationSection({ title, data }: AllocationSectionProps) {
 
                 {/* Expandable holdings list */}
                 {isExpanded && item.holdings?.length > 0 && (
-                  <div className="ml-9 mr-1 mt-1 mb-2 space-y-px rounded-lg border bg-muted/30 overflow-hidden">
+                  <div className="mx-1 mt-1 mb-2 space-y-px overflow-hidden rounded-lg border bg-muted/30 sm:ml-9">
                     {item.holdings.map((h) => (
                       <div
                         key={h.symbol}
-                        className="flex items-center justify-between px-3 py-2 text-xs hover:bg-muted/50"
+                        className="flex flex-col gap-2 px-3 py-2 text-xs hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-medium">{h.symbol}</span>
+                          <Link
+                            href={`/markets/${encodeURIComponent(h.symbol)}`}
+                            className="font-medium hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                          >
+                            {h.symbol}
+                          </Link>
                           <span className="truncate text-muted-foreground">
                             {h.name !== h.symbol ? h.name : ""}
                           </span>
@@ -128,8 +134,8 @@ export function AllocationSection({ title, data }: AllocationSectionProps) {
         </div>
 
         {/* Donut ring — sticky on desktop */}
-        <div className="w-full md:w-56 lg:w-64 shrink-0 self-start md:sticky md:top-4">
-          <div className="relative h-56 lg:h-64 min-w-0 [&_.recharts-sector]:outline-none [&_.recharts-pie]:outline-none">
+        <div className="w-full shrink-0 self-start sm:max-w-xs sm:self-center lg:sticky lg:top-4 lg:w-64 lg:self-start">
+          <div className="relative h-56 min-w-0 lg:h-64 [&_.recharts-sector]:outline-none [&_.recharts-pie]:outline-none">
             {/* ``minWidth`` / ``minHeight`` of 0 suppress Recharts' "-1 dims"
                 preflight warning that otherwise fires on every chart during
                 hydration and sticky-recalc in dev (StrictMode × 5 sections

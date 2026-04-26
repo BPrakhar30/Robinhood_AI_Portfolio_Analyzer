@@ -84,8 +84,59 @@ export default function TransactionsPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="divide-y md:hidden">
+              {filtered.map((txn, i) => (
+                <div key={`${txn.symbol}-${txn.executed_at}-${i}`} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{txn.symbol}</p>
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs capitalize ${TXN_COLORS[txn.transaction_type] || ""}`}
+                        >
+                          {txn.transaction_type}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDateShort(txn.executed_at)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <CurrencyText value={txn.total_amount} className="text-sm font-medium" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Quantity</p>
+                      <p className="tabular-nums">
+                        {txn.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Price</p>
+                      <CurrencyText value={txn.price} className="text-sm" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Fees</p>
+                      <p className="tabular-nums text-muted-foreground">
+                        {txn.fees > 0 ? `$${txn.fees.toFixed(2)}` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="py-8 text-center text-muted-foreground">
+                  No transactions match the selected filter.
+                </div>
+              )}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <Table className="min-w-[760px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>

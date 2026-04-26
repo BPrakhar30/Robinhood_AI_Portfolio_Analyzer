@@ -50,7 +50,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div className="mx-auto flex h-14 w-full max-w-7xl 2xl:max-w-[88rem] items-center justify-between px-4 sm:px-6 lg:px-10 xl:px-12">
           <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-primary-foreground" />
@@ -69,14 +69,14 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="py-20 sm:py-32">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
+      <section className="py-20 sm:py-28 lg:py-32 2xl:py-36">
+        <div className="mx-auto w-full max-w-5xl 2xl:max-w-6xl px-4 sm:px-6 lg:px-10 text-center">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl 2xl:text-7xl font-bold tracking-tight">
             Your AI Portfolio
             <br />
             <span className="text-muted-foreground">Copilot</span>
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-6 text-base sm:text-lg 2xl:text-xl text-muted-foreground max-w-2xl 2xl:max-w-3xl mx-auto leading-relaxed">
             Securely connect your Robinhood account, understand your portfolio deeply,
             and make smarter investment decisions with AI-driven analytics.
           </p>
@@ -93,20 +93,20 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="py-16 border-t border-border/40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      <section className="py-16 lg:py-20 border-t border-border/40">
+        <div className="mx-auto w-full max-w-7xl 2xl:max-w-[88rem] px-4 sm:px-6 lg:px-10 xl:px-12">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+            <h2 className="text-2xl sm:text-3xl 2xl:text-4xl font-semibold tracking-tight">
               Everything you need to manage your portfolio
             </h2>
             <p className="mt-3 text-muted-foreground">
               From account linking to scenario simulation — built for serious retail investors.
             </p>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 2xl:gap-6">
             {FEATURES.map((feature) => (
-              <Card key={feature.title} className="transition-shadow hover:shadow-md">
-                <CardContent className="p-6">
+              <Card key={feature.title} className="h-full transition-shadow hover:shadow-md">
+                <CardContent className="p-5 lg:p-6">
                   <div className="rounded-lg bg-muted w-10 h-10 flex items-center justify-center mb-4">
                     <feature.icon className="h-5 w-5 text-muted-foreground" />
                   </div>
@@ -122,12 +122,12 @@ export default function LandingPage() {
       </section>
 
       {/* Trust */}
-      <section className="py-16 border-t border-border/40 bg-muted/30">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <section className="py-16 lg:py-20 border-t border-border/40 bg-muted/30">
+        <div className="mx-auto w-full max-w-7xl 2xl:max-w-[88rem] px-4 sm:px-6 lg:px-10 xl:px-12 text-center">
           <h2 className="text-2xl font-semibold tracking-tight mb-8">
             Built with security first
           </h2>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 lg:gap-10">
             {TRUST_ITEMS.map((item) => (
               <div key={item.label} className="flex items-center gap-2 text-sm text-muted-foreground">
                 <item.icon className="h-4 w-4 text-emerald-600" />
@@ -140,7 +140,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-border/40 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center text-sm text-muted-foreground">
+        <div className="mx-auto w-full max-w-7xl 2xl:max-w-[88rem] px-4 sm:px-6 lg:px-10 xl:px-12 text-center text-sm text-muted-foreground">
           &copy; {new Date().getFullYear()} RobinhoodAI Copilot. Not financial advice. Not affiliated with Robinhood Markets, Inc.
         </div>
       </footer>

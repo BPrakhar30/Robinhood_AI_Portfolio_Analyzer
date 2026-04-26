@@ -29,13 +29,14 @@ const DEFAULT_WIDTH = 230;
 
 interface ChatSidebarProps {
   onClose?: () => void;
+  variant?: "desktop" | "mobile";
   /** Optional override for the new-chat button (e.g. clear active session
    *  instead of creating a row up-front). Defaults to calling
    *  ``createSession`` so the sidebar remains usable on its own. */
   onNewChat?: () => void;
 }
 
-export function ChatSidebar({ onClose, onNewChat }: ChatSidebarProps) {
+export function ChatSidebar({ onClose, onNewChat, variant = "desktop" }: ChatSidebarProps) {
   const {
     sessions,
     activeSessionId,
@@ -113,8 +114,11 @@ export function ChatSidebar({ onClose, onNewChat }: ChatSidebarProps) {
   return (
     <aside
       ref={sidebarRef}
-      style={{ width }}
-      className="relative border-r border-border bg-background flex flex-col h-full shrink-0 hidden lg:flex z-50"
+      style={variant === "desktop" ? { width } : undefined}
+      className={cn(
+        "relative border-r border-border bg-background flex flex-col h-full shrink-0 z-50",
+        variant === "desktop" ? "hidden lg:flex" : "w-full",
+      )}
     >
       {/* Header */}
       <div className="p-3 border-b border-border space-y-2 shrink-0">
@@ -222,7 +226,10 @@ export function ChatSidebar({ onClose, onNewChat }: ChatSidebarProps) {
       {/* Drag handle */}
       <div
         onMouseDown={onMouseDown}
-        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-10"
+        className={cn(
+          "absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-10",
+          variant === "mobile" && "hidden",
+        )}
       />
     </aside>
   );
@@ -300,7 +307,7 @@ function ChatRow({
       <DropdownMenu>
         <DropdownMenuTrigger
           onClick={(e) => e.stopPropagation()}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent transition-opacity shrink-0 cursor-pointer"
+          className="p-1 rounded hover:bg-accent transition-opacity shrink-0 cursor-pointer opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
         </DropdownMenuTrigger>

@@ -89,7 +89,7 @@ export default function DashboardPage() {
 
       {/* Summary stats */}
       {hasConnections && summary && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Total Portfolio Value"
             value={formatCurrency(summary.total_value)}
@@ -117,13 +117,13 @@ export default function DashboardPage() {
 
       {/* Health Score + Risk Alerts row */}
       {hasConnections && (healthScore || riskAlerts) && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
           {/* Health Score badge */}
           {healthScore && (
-            <Link href="/health">
-              <Card className="hover:bg-accent/30 transition-colors cursor-pointer h-full">
+            <Link href="/health" className="group block h-full">
+              <Card className="h-full cursor-pointer border-border/80 transition-all hover:-translate-y-0.5 hover:border-amber-500/60 hover:bg-amber-50/40 hover:shadow-md dark:hover:bg-amber-950/15">
                 <CardContent className="py-5 px-5">
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <div className="relative h-14 w-14 shrink-0">
                       <svg width={56} height={56} className="transform -rotate-90">
                         <circle cx={28} cy={28} r={22} fill="none" className="stroke-muted" strokeWidth={5} />
@@ -152,13 +152,16 @@ export default function DashboardPage() {
                         </span>
                       </div>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium">Health Score</p>
                       <p className="text-xs text-muted-foreground">
                         {healthScore.grade} — {healthScore.top_issues[0]?.split(":")[0] || "Looking good"}
                       </p>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
+                    <div className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 px-3 py-1 text-xs font-medium text-amber-700 transition-colors group-hover:bg-amber-500 group-hover:text-white dark:text-amber-400 sm:ml-auto">
+                      View details
+                      <ArrowRight className="h-3 w-3" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -167,10 +170,10 @@ export default function DashboardPage() {
 
           {/* Risk Alerts widget */}
           {riskAlerts && (
-            <Link href="/alerts">
-              <Card className="hover:bg-accent/30 transition-colors cursor-pointer h-full">
+            <Link href="/alerts" className="group block h-full">
+              <Card className="h-full cursor-pointer border-border/80 transition-all hover:-translate-y-0.5 hover:border-amber-500/60 hover:bg-amber-50/40 hover:shadow-md dark:hover:bg-amber-950/15">
                 <CardContent className="py-5 px-5">
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <div className={cn(
                       "h-14 w-14 rounded-xl flex items-center justify-center shrink-0",
                       riskAlerts.summary.high > 0 ? "bg-red-500/10" :
@@ -205,7 +208,10 @@ export default function DashboardPage() {
                         )}
                       </div>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 px-3 py-1 text-xs font-medium text-amber-700 transition-colors group-hover:bg-amber-500 group-hover:text-white dark:text-amber-400">
+                      Open alerts
+                      <ArrowRight className="h-3 w-3" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -216,7 +222,7 @@ export default function DashboardPage() {
 
       {/* Connection status + quick actions */}
       {hasConnections && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 xl:grid-cols-2 min-[2200px]:grid-cols-[1.15fr_0.85fr]">
           {/* Connections */}
           <Card>
             <CardHeader className="pb-3">
@@ -301,7 +307,7 @@ export default function DashboardPage() {
             <CardTitle className="text-base">System Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-6 text-sm">
+                <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:gap-6">
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">API:</span>
                 <StatusBadge status="healthy" />

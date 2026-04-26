@@ -57,7 +57,10 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center justify-between h-full px-4 md:px-6">
+      {/* No max-width: the right-side cluster (system health + avatar) must
+          land flush with the viewport edge so it lines up with full-bleed
+          children like the assistant page's "Incognito" toggle. */}
+      <div className="flex h-full w-full items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-12">
         <div className="flex items-center gap-3">
           <Sheet>
             <SheetTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}>
@@ -74,7 +77,7 @@ export function Topbar() {
             <Badge
               variant="outline"
               className={cn(
-                "text-xs",
+                "hidden sm:inline-flex text-xs",
                 health.status === "healthy"
                   ? "border-emerald-500/30 text-emerald-600"
                   : "border-amber-500/30 text-amber-600"

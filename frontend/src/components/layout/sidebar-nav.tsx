@@ -21,7 +21,6 @@ import {
   Settings,
   Bot,
   Activity,
-  Bell,
   FlaskConical,
   Newspaper,
   ChevronLeft,
@@ -43,7 +42,6 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Settings,
   Bot,
   Activity,
-  Bell,
   Newspaper,
   FlaskConical,
 };
@@ -55,9 +53,7 @@ const NAV_ITEMS = [
   { label: "Allocation", href: "/allocation", icon: "PieChart" },
   { label: "Transactions", href: "/transactions", icon: "ArrowLeftRight" },
   { label: "AI Assistant", href: "/assistant", icon: "Bot" },
-  { label: "Health Score", href: "/health", icon: "Activity" },
   { label: "Markets", href: "/markets", icon: "Newspaper" },
-  { label: "Alerts", href: "/alerts", icon: "Bell" },
   { label: "Summary", href: "/summary", icon: "Activity" },
   { label: "Settings", href: "/settings", icon: "Settings" },
 ];
@@ -99,13 +95,21 @@ export function SidebarNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                "relative flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-amber-500/10 text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               )}
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              {isActive && (
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-amber-500" />
+              )}
+              <Icon
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  isActive && "text-amber-600 dark:text-amber-400",
+                )}
+              />
               {!collapsed && <span className="truncate">{item.label}</span>}
             </Link>
           );

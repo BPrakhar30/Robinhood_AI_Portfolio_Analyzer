@@ -36,150 +36,152 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       <PageHeader title="Settings" description="Manage your account and preferences" />
 
-      {/* Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Profile</CardTitle>
-          <CardDescription>Your account information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Name</p>
-              <p className="text-sm font-medium">{user?.full_name || "—"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Email</p>
-              <p className="text-sm font-medium">{user?.email}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Member since</p>
-              <p className="text-sm font-medium">
-                {user?.created_at
-                  ? new Date(user.created_at).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <StatusBadge status={user?.is_active ? "active" : "inactive"} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* System diagnostics */}
-      {status && (
+      <div className="grid gap-6 xl:grid-cols-2">
+        {/* Profile */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">System Diagnostics</CardTitle>
-            <CardDescription>Backend service health</CardDescription>
+            <CardTitle className="text-base">Profile</CardTitle>
+            <CardDescription>Your account information</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-muted-foreground">API</p>
-                <StatusBadge status={status.components.api} />
+                <p className="text-sm text-muted-foreground">Name</p>
+                <p className="text-sm font-medium">{user?.full_name || "—"}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Database</p>
-                <StatusBadge status={status.components.database} />
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="text-sm font-medium break-all">{user?.email}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Version</p>
-                <p className="font-mono text-xs">{status.version}</p>
+                <p className="text-sm text-muted-foreground">Member since</p>
+                <p className="text-sm font-medium">
+                  {user?.created_at
+                    ? new Date(user.created_at).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "—"}
+                </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Overall</p>
-                <StatusBadge status={status.status} />
+                <p className="text-sm text-muted-foreground">Status</p>
+                <StatusBadge status={user?.is_active ? "active" : "inactive"} />
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Session */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Session</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Button variant="destructive" onClick={logout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Log out
-          </Button>
-        </CardContent>
-      </Card>
+        {/* System diagnostics */}
+        {status && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">System Diagnostics</CardTitle>
+              <CardDescription>Backend service health</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 text-sm sm:grid-cols-2">
+                <div>
+                  <p className="text-muted-foreground">API</p>
+                  <StatusBadge status={status.components.api} />
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Database</p>
+                  <StatusBadge status={status.components.database} />
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Version</p>
+                  <p className="font-mono text-xs">{status.version}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Overall</p>
+                  <StatusBadge status={status.status} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Delete Account */}
-      <Card className="border-destructive/30">
-        <CardHeader>
-          <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
-          <CardDescription>
-            Permanently delete your account and all associated data
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            This will permanently remove your account, broker connections, portfolio
-            data, and transaction history. This action cannot be undone.
-          </p>
+        {/* Session */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Session</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button variant="destructive" onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </Button>
+          </CardContent>
+        </Card>
 
-          {deleteAccountMutation.isError && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                {(deleteAccountMutation.error as Error)?.message ||
-                  "Failed to delete account. Please try again."}
-              </AlertDescription>
-            </Alert>
-          )}
+        {/* Delete Account */}
+        <Card className="border-destructive/30">
+          <CardHeader>
+            <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
+            <CardDescription>
+              Permanently delete your account and all associated data
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              This will permanently remove your account, broker connections, portfolio
+              data, and transaction history. This action cannot be undone.
+            </p>
 
-          <Button
-            variant="destructive"
-            className="gap-2"
-            onClick={() => setDialogOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete Account
-          </Button>
+            {deleteAccountMutation.isError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  {(deleteAccountMutation.error as Error)?.message ||
+                    "Failed to delete account. Please try again."}
+                </AlertDescription>
+              </Alert>
+            )}
 
-          <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete your account, all broker connections,
-                  positions, transactions, and portfolio snapshots. This action
-                  cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleteAccountMutation.isPending}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteAccount}
-                  disabled={deleteAccountMutation.isPending}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {deleteAccountMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Yes, delete my account
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
+            <Button
+              variant="destructive"
+              className="gap-2"
+              onClick={() => setDialogOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Account
+            </Button>
+
+            <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete your account, all broker connections,
+                    positions, transactions, and portfolio snapshots. This action
+                    cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleteAccountMutation.isPending}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    disabled={deleteAccountMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleteAccountMutation.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Yes, delete my account
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

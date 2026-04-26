@@ -39,6 +39,7 @@ import { useChatStore } from "@/features/chat/store";
 import type { ChatMessage } from "@/features/chat/types";
 import { streamAssistant } from "@/features/chat/api";
 import { MarkdownMessage } from "@/features/chat/markdown-message";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const SUGGESTIONS = [
   {
@@ -77,6 +78,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Temporary (ephemeral) chat: messages live only in this component and are
   // streamed WITHOUT a session_id so the backend doesn't persist them either.
@@ -375,6 +377,22 @@ export default function AssistantPage() {
           </>
         )}
 
+        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+          <SheetTrigger className="absolute top-2 left-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden">
+            <PanelLeftOpen className="h-4 w-4" />
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-[86vw] max-w-sm lg:hidden">
+            <ChatSidebar
+              variant="mobile"
+              onClose={() => setMobileSidebarOpen(false)}
+              onNewChat={() => {
+                handleNewChat();
+                setMobileSidebarOpen(false);
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+
         {/* Incognito toggle: label on welcome, icon-only inside a chat.
             Tooltip copy stays "Incognito mode" in every state. */}
         <div className="absolute top-2 right-3 z-10 flex items-center gap-2">
@@ -388,7 +406,7 @@ export default function AssistantPage() {
 
         {isWelcome ? (
           <div className="flex-1 flex flex-col items-center justify-center px-4">
-            <div className="w-full max-w-2xl space-y-8">
+            <div className="w-full max-w-2xl xl:max-w-3xl 2xl:max-w-4xl space-y-8">
               <div className="text-center space-y-3">
                 <div
                   className={cn(
@@ -466,7 +484,7 @@ export default function AssistantPage() {
         ) : (
           <>
             <div className="flex-1 overflow-y-auto">
-              <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+              <div className="max-w-3xl xl:max-w-4xl 2xl:max-w-5xl mx-auto px-3 py-5 space-y-6 sm:px-4 sm:py-6">
                 {activeMessages.map((msg, index) => (
                   <MessageItem
                     key={msg.id}
@@ -490,7 +508,7 @@ export default function AssistantPage() {
             </div>
 
             <div className="border-t border-border bg-background/95 backdrop-blur shrink-0">
-              <div className="max-w-4xl mx-auto px-4 py-2">
+              <div className="max-w-3xl xl:max-w-4xl 2xl:max-w-5xl mx-auto px-3 py-2 sm:px-4">
                 <div className="rounded-xl border border-border/60 bg-background shadow-sm">
                   <div className="relative">
                     <Textarea
@@ -651,7 +669,7 @@ function MessageItem({
         )}
 
         {isEditing && isUser ? (
-          <div className="w-full max-w-[80%] rounded-2xl bg-muted/60 border border-border p-2 space-y-2">
+          <div className="w-full max-w-[calc(100%-3rem)] rounded-2xl bg-muted/60 border border-border p-2 space-y-2 sm:max-w-[80%]">
             <Textarea
               value={editDraft}
               onChange={(e) => onEditDraftChange(e.target.value)}
@@ -676,7 +694,7 @@ function MessageItem({
         ) : (
           <div
             className={cn(
-              "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-[80%]",
+              "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-[calc(100%-3rem)] sm:max-w-[80%]",
               isUser
                 ? "bg-primary text-primary-foreground rounded-br-md whitespace-pre-wrap"
                 : "bg-muted rounded-bl-md",
@@ -752,7 +770,7 @@ function MessageActions({
   return (
     <div
       className={cn(
-        "flex items-center gap-1 text-muted-foreground opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity",
+        "flex items-center gap-1 text-muted-foreground opacity-100 transition-opacity md:opacity-0 md:group-hover/msg:opacity-100 md:focus-within:opacity-100",
         align === "left" ? "self-start" : "self-end",
         sidePadding,
       )}

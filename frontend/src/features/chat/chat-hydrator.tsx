@@ -12,7 +12,9 @@ import { useAuthStore } from "@/features/auth/store";
 import { useChatStore } from "./store";
 
 export function ChatHydrator() {
-  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const userId = useAuthStore((s) => (
+    s.user?.id != null ? String(s.user.id) : null
+  ));
   const loadSessions = useChatStore((s) => s.loadSessions);
   const reset = useChatStore((s) => s.reset);
   const hydratedForUserId = useChatStore((s) => s.hydratedForUserId);
