@@ -17,6 +17,7 @@ from app.auth.router import router as auth_router
 from app.broker_integrations.router import router as broker_router
 from app.portfolio_engine.router import router as portfolio_router
 from app.markets.router import router as markets_router
+from app.stocks.router import router as stocks_router
 from app.ai_agent.router import router as assistant_router
 from app.chat.router import router as chat_router
 from app.utils.exceptions import AppException
@@ -118,6 +119,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(broker_router, prefix="/api/v1")
 app.include_router(portfolio_router, prefix="/api/v1")
 app.include_router(markets_router, prefix="/api/v1")
+app.include_router(stocks_router, prefix="/api/v1")
 app.include_router(assistant_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 

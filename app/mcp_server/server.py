@@ -18,6 +18,7 @@ from uuid import UUID
 
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+from pydantic import BaseModel
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +31,14 @@ from app.ai_agent.models import (
 )
 from app.database.engine import AsyncSessionLocal
 from app.database.models import PortfolioSnapshot, Position, Transaction
+from app.stocks import service as stocks_service
+from app.stocks.schemas import (
+    StockEarnings,
+    StockKeyStats,
+    StockPositionSummary,
+    StockProfile,
+    StockQuote,
+)
 from app.utils.logging import get_logger
 
 logger = get_logger("mcp_server")
@@ -313,3 +322,178 @@ async def get_performance_summary(
         start_date=earliest.captured_at,
         end_date=latest.captured_at,
     )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Per-symbol tools — let the assistant reason over individual holdings
+# ──────────────────────────────────────────────────────────────────────
+
+
+def _normalize_symbol(symbol: str) -> str:
+    """Uppercase + strip for MCP safety. Raises on obviously bad input."""
+    if not symbol or not isinstance(symbol, str):
+        raise ValueError("symbol is required")
+    s = symbol.strip().upper()
+    if len(s) > 12:
+        raise ValueError("symbol too long")
+    return s
+
+
+@mcp.tool()
+async def get_symbol_profile(ctx: Context, symbol: str) -> StockProfile:
+    """Company/fund profile for ``symbol`` — name, sector, industry, HQ, CEO, employees, description."""
+    user_id = _extract_user_id(ctx)
+    sym = _normalize_symbol(symbol)
+    profile = await stocks_service.fetch_profile(sym)
+    _log_tool_call("get_symbol_profile", user_id, symbol=sym)
+    return profile
+
+
+@mcp.tool()
+async def get_symbol_quote(ctx: Context, symbol: str) -> StockQuote:
+    """Latest quote for ``symbol`` — price, previous close, day change %, volume."""
+    user_id = _extract_user_id(ctx)
+    sym = _normalize_symbol(symbol)
+    quote = await stocks_service.fetch_quote(sym)
+    _log_tool_call("get_symbol_quote", user_id, symbol=sym, price=quote.price)
+    return quote
+
+
+@mcp.tool()
+async def get_symbol_key_stats(ctx: Context, symbol: str) -> StockKeyStats:
+    """Key fundamentals for ``symbol`` — market cap, P/E, EPS, beta, 52-wk range, dividend yield."""
+    user_id = _extract_user_id(ctx)
+    sym = _normalize_symbol(symbol)
+    stats = await stocks_service.fetch_key_stats(sym)
+    _log_tool_call("get_symbol_key_stats", user_id, symbol=sym)
+    return stats
+
+
+@mcp.tool()
+async def get_symbol_earnings(
+    ctx: Context, symbol: str, history: int = 4
+) -> StockEarnings:
+    """Upcoming earnings event + last ``history`` reported quarters for ``symbol``.
+
+    Each quarter includes estimate vs actual EPS and a derived beat/miss/inline
+    label so the assistant can comment on surprise trends.
+    """
+    user_id = _extract_user_id(ctx)
+    sym = _normalize_symbol(symbol)
+    history = _clamp(history, 1, 12)
+    earnings = await stocks_service.fetch_earnings(sym, history=history)
+    _log_tool_call(
+        "get_symbol_earnings",
+        user_id,
+        symbol=sym,
+        history=history,
+        has_next=earnings.next_event is not None,
+    )
+    return earnings
+
+
+class CandleSummary(BaseModel):
+    """Compact historical-price summary — avoids flooding the LLM with raw bars."""
+
+    symbol: str
+    range: str
+    interval: str
+    start_price: Optional[float] = None
+    end_price: Optional[float] = None
+    change: Optional[float] = None
+    change_percent: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    points: int = 0
+
+
+@mcp.tool()
+async def get_symbol_candles_summary(
+    ctx: Context, symbol: str, period: str = "1M"
+) -> CandleSummary:
+    """Summary of OHLC history over ``period`` (``1D/1W/1M/3M/YTD/1Y/5Y/MAX``).
+
+    Returns start/end price, period change %, and the min/max close over the
+    window. We deliberately return a **summary** (not the full candle list)
+    because the assistant almost always needs trend direction and magnitude,
+    not raw bars — and raw bars would blow out the context window.
+    """
+    user_id = _extract_user_id(ctx)
+    sym = _normalize_symbol(symbol)
+    period_valid = period if period in stocks_service._RANGE_PARAMS else "1M"
+    candles = await stocks_service.fetch_candles(sym, period_valid)  # type: ignore[arg-type]
+
+    closes = [p.c for p in candles.points]
+    hi = max(closes) if closes else None
+    lo = min(closes) if closes else None
+
+    out = CandleSummary(
+        symbol=sym,
+        range=candles.range,
+        interval=candles.interval,
+        start_price=candles.start_price,
+        end_price=candles.end_price,
+        change=candles.change,
+        change_percent=candles.change_percent,
+        high=hi,
+        low=lo,
+        points=len(candles.points),
+    )
+    _log_tool_call("get_symbol_candles_summary", user_id, symbol=sym, period=period_valid)
+    return out
+
+
+@mcp.tool()
+async def get_position_for_symbol(
+    ctx: Context, symbol: str
+) -> StockPositionSummary:
+    """How the signed-in user is positioned in ``symbol``.
+
+    Returns ``owned=False`` with zeroed fields when the user has no open
+    position, so the LLM can cleanly answer "do I own X?"-style questions.
+    """
+    user_id = _extract_user_id(ctx)
+    sym = _normalize_symbol(symbol)
+
+    async with _DbSession() as session:
+        # Individual position.
+        pos_stmt = (
+            select(Position)
+            .where(
+                Position.user_id == user_id,
+                func.upper(Position.symbol) == sym,
+                Position.quantity > 0,
+            )
+            .limit(1)
+        )
+        pos = (await session.execute(pos_stmt)).scalar_one_or_none()
+
+        # Portfolio-wide total to compute weight %.
+        total_stmt = select(
+            func.sum(Position.quantity * func.coalesce(Position.current_price, 0.0))
+        ).where(Position.user_id == user_id)
+        total_value = (await session.execute(total_stmt)).scalar_one() or 0.0
+
+    if pos is None:
+        _log_tool_call("get_position_for_symbol", user_id, symbol=sym, owned=False)
+        return StockPositionSummary(symbol=sym, owned=False)
+
+    # Live quote for today's-return + live price when the stored one is stale.
+    quote = await stocks_service.fetch_quote(sym)
+    summary = stocks_service.build_position_summary(
+        symbol=sym,
+        quantity=pos.quantity or 0.0,
+        average_cost=pos.average_cost,
+        current_price=pos.current_price or quote.price,
+        previous_close=quote.previous_close,
+        asset_type=pos.asset_type.value if pos.asset_type else None,
+        portfolio_total_value=total_value or None,
+    )
+    _log_tool_call(
+        "get_position_for_symbol",
+        user_id,
+        symbol=sym,
+        owned=True,
+        shares=summary.shares,
+    )
+    return summary
