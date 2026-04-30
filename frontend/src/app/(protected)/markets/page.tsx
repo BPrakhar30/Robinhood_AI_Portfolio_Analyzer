@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ChevronDown,
   ExternalLink,
-  Loader2,
   Search,
+  ShieldCheck,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useMarketNews } from "@/features/markets/hooks";
 import type {
@@ -122,7 +124,6 @@ function MarketSummaryItem({
 
 // ── Portfolio News grid ────────────────────────────────────────────
 
-// Bullets we never want to leak into the UI even if the model regresses.
 const FILLER_BULLET_PATTERNS = [
   /read (the )?full/i,
   /for more (context|details|info)/i,
@@ -134,10 +135,6 @@ const FILLER_BULLET_PATTERNS = [
   /is relevant to .* based on recent market coverage/i,
 ];
 
-// Strips ANY leading combination of bullet glyphs (•, ‣, ◦, ⁃),
-// dashes, asterisks, and whitespace — so even nested artefacts like
-// "• • text" or "* - text" reduce to clean text. The amber dot in the
-// rendered <li> always provides exactly one visible bullet, never two.
 const LEADING_BULLET_RE = /^[\u2022\u2023\u25E6\u2043\-\*\s]+/;
 const LEADING_NUMBER_RE = /^\d+[\.\)]\s*/;
 
@@ -154,11 +151,14 @@ function summaryPoints(item: StockNewsItem): string[] {
     .replace(/\r/g, "")
     .trim();
 
-  // Prefer the LLM's bullet structure when it's there: each line is a bullet.
-  let lines = raw.split(/\n+/).map(stripBullet).filter(Boolean);
+  let lines: string[] = [];
+  for (const rawLine of raw.split(/\n+/)) {
+    for (const part of rawLine.split(/\s*[•]\s*/)) {
+      const cleaned = stripBullet(part);
+      if (cleaned) lines.push(cleaned);
+    }
+  }
 
-  // If we didn't get >= 2 lines, fall back to sentence splitting on the
-  // collapsed text so we still extract real points from prose summaries.
   if (lines.length < 2) {
     const flat = raw.replace(/\s+/g, " ");
     lines = flat
@@ -167,18 +167,22 @@ function summaryPoints(item: StockNewsItem): string[] {
       .filter(Boolean);
   }
 
-  // Normalize whitespace, drop trailing periods (we re-add the dot via the
-  // amber span), and drop filler / duplicates. We DO NOT pad with the
-  // headline anymore — duplicate bullets are worse than fewer bullets.
   const seen = new Set<string>();
   const headlineKey = item.headline.trim().toLowerCase();
   const cleaned: string[] = [];
 
   for (const line of lines) {
-    const text = line.replace(/\s+/g, " ").replace(/\.+$/, "").trim();
-    const key = text.toLowerCase();
-    if (!text || isFiller(text)) continue;
-    if (key === headlineKey) continue;
+    let text = line
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/([.!?])\.+$/, "$1");
+    if (!text) continue;
+    if (isFiller(text)) continue;
+    if (!text.endsWith(".") && !text.endsWith("!") && !text.endsWith("?")) {
+      text += ".";
+    }
+    const key = text.replace(/[.!?]+$/, "").toLowerCase();
+    if (key === headlineKey.replace(/[.!?]+$/, "")) continue;
     if (seen.has(key)) continue;
     seen.add(key);
     cleaned.push(text);
@@ -188,8 +192,16 @@ function summaryPoints(item: StockNewsItem): string[] {
   return cleaned;
 }
 
+type SentimentFilter = "all" | "positive" | "negative";
+
 function PortfolioNewsCard({ item }: { item: StockNewsItem }) {
   const points = summaryPoints(item);
+  const sentimentColor = item.sentiment === "negative"
+    ? "border-l-red-500"
+    : item.sentiment === "positive"
+    ? "border-l-emerald-500"
+    : "border-l-transparent";
+
   return (
     <a
       href={item.url}
@@ -197,7 +209,10 @@ function PortfolioNewsCard({ item }: { item: StockNewsItem }) {
       rel="noopener noreferrer"
       className="group block h-full"
     >
-      <Card className="h-full flex flex-col hover:bg-accent/20 hover:border-amber-500/40 transition-colors cursor-pointer">
+      <Card className={cn(
+        "h-full flex flex-col hover:bg-accent/20 hover:border-amber-500/40 transition-colors cursor-pointer border-l-[3px]",
+        sentimentColor,
+      )}>
         <CardContent className="p-4 flex-1 flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             {item.symbol && (
@@ -205,19 +220,46 @@ function PortfolioNewsCard({ item }: { item: StockNewsItem }) {
                 {item.symbol}
               </Badge>
             )}
+            {item.sentiment && item.sentiment !== "neutral" && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] px-1.5 py-0 font-normal",
+                  item.sentiment === "negative"
+                    ? "text-red-600 dark:text-red-400 border-red-500/30"
+                    : "text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+                )}
+              >
+                {item.sentiment === "negative" ? "Risk" : "Positive"}
+              </Badge>
+            )}
             <span className="ml-auto">{item.time_ago}</span>
           </div>
-          <h4 className="text-sm font-semibold leading-snug line-clamp-3 group-hover:text-foreground transition-colors">
+          <h4 className="text-sm font-semibold leading-snug line-clamp-2 group-hover:text-foreground transition-colors">
             {item.headline}
           </h4>
           {points.length > 0 ? (
-            <ul className="space-y-1.5 text-xs text-muted-foreground leading-relaxed flex-1">
-              {points.map((point, idx) => (
-                <li key={idx} className="flex gap-2">
-                  <span className="mt-1.5 h-1 w-1 rounded-full bg-amber-500 shrink-0" />
-                  <span className="line-clamp-3">{point}</span>
-                </li>
-              ))}
+            <ul className="space-y-2 text-xs text-muted-foreground leading-relaxed flex-1">
+              {points.map((point, idx) => {
+                const isImpact = idx === points.length - 1 && points.length === 3;
+                return (
+                  <li key={idx} className="flex gap-2">
+                    <span className={cn(
+                      "mt-1.5 h-1.5 w-1.5 rounded-full shrink-0",
+                      isImpact && item.sentiment === "negative"
+                        ? "bg-red-500"
+                        : isImpact && item.sentiment === "positive"
+                        ? "bg-emerald-500"
+                        : "bg-amber-500",
+                    )} />
+                    <span className={cn(
+                      isImpact && "text-foreground font-medium",
+                    )}>
+                      {point}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-xs text-muted-foreground italic flex-1">
@@ -244,35 +286,95 @@ function PortfolioNewsGrid({
   updatedAt?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? articles : articles.slice(0, PORTFOLIO_NEWS_INITIAL);
-  const hasMore = articles.length > PORTFOLIO_NEWS_INITIAL;
+  const [filter, setFilter] = useState<SentimentFilter>("all");
+
+  const filtered = useMemo(() => {
+    if (filter === "all") return articles;
+    return articles.filter((a) => a.sentiment === filter);
+  }, [articles, filter]);
+
+  const riskCount = articles.filter((a) => a.sentiment === "negative").length;
+  const positiveCount = articles.filter((a) => a.sentiment === "positive").length;
+
+  const visible = showAll ? filtered : filtered.slice(0, PORTFOLIO_NEWS_INITIAL);
+  const hasMore = filtered.length > PORTFOLIO_NEWS_INITIAL;
 
   if (!articles.length) return null;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
         <div className="flex items-baseline gap-2">
           <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Portfolio News
           </h2>
           <span className="text-[11px] text-muted-foreground">
-            {articles.length} {articles.length === 1 ? "story" : "stories"} across your holdings
+            {filtered.length} {filtered.length === 1 ? "story" : "stories"} across your holdings
           </span>
         </div>
-        {updatedAt && (
-          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-            Updated {timeAgo(updatedAt)}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg border border-border p-0.5">
+            <button
+              type="button"
+              onClick={() => { setFilter("all"); setShowAll(false); }}
+              className={cn(
+                "px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
+                filter === "all"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFilter("negative"); setShowAll(false); }}
+              className={cn(
+                "px-3 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1 cursor-pointer",
+                filter === "negative"
+                  ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <AlertTriangle className="h-3 w-3" />
+              Risks {riskCount > 0 && <span className="text-[10px]">({riskCount})</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFilter("positive"); setShowAll(false); }}
+              className={cn(
+                "px-3 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1 cursor-pointer",
+                filter === "positive"
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <ShieldCheck className="h-3 w-3" />
+              Positives {positiveCount > 0 && <span className="text-[10px]">({positiveCount})</span>}
+            </button>
+          </div>
+          {updatedAt && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Updated {timeAgo(updatedAt)}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {visible.map((a, i) => (
-          <PortfolioNewsCard key={`${a.url}-${i}`} item={a} />
-        ))}
-      </div>
+      {filtered.length === 0 ? (
+        <div className="py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            No {filter === "negative" ? "risk" : "positive"} news for your holdings right now.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {visible.map((a, i) => (
+            <PortfolioNewsCard key={`${a.url}-${i}`} item={a} />
+          ))}
+        </div>
+      )}
 
       {hasMore && (
         <div className="mt-4 flex justify-center">
@@ -281,7 +383,7 @@ function PortfolioNewsGrid({
             onClick={() => setShowAll((v) => !v)}
             className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors cursor-pointer"
           >
-            {showAll ? "Show less" : `Show all ${articles.length} stories`}
+            {showAll ? "Show less" : `Show all ${filtered.length} stories`}
           </button>
         </div>
       )}
@@ -290,6 +392,26 @@ function PortfolioNewsGrid({
 }
 
 // ── Stocks tab ─────────────────────────────────────────────────────
+
+function StockLogo({ card }: { card: StockCardType }) {
+  const [failed, setFailed] = useState(false);
+  if (!card.logo || failed) {
+    return (
+      <div className="h-9 w-9 rounded-lg border border-border bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground shrink-0">
+        {card.symbol.slice(0, 2)}
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={card.logo}
+      alt={`${card.name} logo`}
+      className="h-9 w-9 rounded-lg border border-border object-contain bg-white shrink-0"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 function StockRow({ card }: { card: StockCardType }) {
   const up = (card.change_percent ?? 0) > 0;
@@ -300,39 +422,44 @@ function StockRow({ card }: { card: StockCardType }) {
       className="block h-full"
     >
       <Card className="h-full hover:bg-accent/30 transition-colors cursor-pointer">
-        <CardContent className="p-4 min-h-[96px] flex items-center gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold">{card.symbol}</p>
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal capitalize">
-                {card.asset_type}
-              </Badge>
-              {card.owned && (
-                <Badge className="text-[10px] px-1.5 py-0 font-medium bg-amber-500 text-white hover:bg-amber-600">
-                  Owned
+        <CardContent className="p-4 min-h-[96px] flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <StockLogo card={card} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-sm font-semibold">{card.symbol}</span>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal capitalize shrink-0">
+                  {card.asset_type}
                 </Badge>
-              )}
+                {card.owned && (
+                  <Badge className="text-[10px] px-1.5 py-0 font-medium bg-amber-500 text-white hover:bg-amber-600 shrink-0">
+                    Owned
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground truncate">{card.name}</p>
             </div>
-            <p className="text-xs text-muted-foreground truncate">{card.name}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5 min-h-[1rem]">
-              {card.sector || ""}
-            </p>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-medium tabular-nums">
-              {card.price != null ? `$${formatPrice(card.price)}` : "—"}
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-muted-foreground truncate">
+              {card.sector || "\u00A0"}
             </p>
-            <div
-              className={cn(
-                "flex items-center justify-end gap-1 text-xs tabular-nums",
-                up && "text-emerald-600",
-                down && "text-red-500",
-                !up && !down && "text-muted-foreground",
-              )}
-            >
-              {up && <TrendingUp className="h-3 w-3" />}
-              {down && <TrendingDown className="h-3 w-3" />}
-              <span>{formatPercent(card.change_percent)}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-sm font-medium tabular-nums">
+                {card.price != null ? `$${formatPrice(card.price)}` : "—"}
+              </span>
+              <span
+                className={cn(
+                  "flex items-center gap-0.5 text-xs tabular-nums",
+                  up && "text-emerald-600",
+                  down && "text-red-500",
+                  !up && !down && "text-muted-foreground",
+                )}
+              >
+                {up && <TrendingUp className="h-3 w-3" />}
+                {down && <TrendingDown className="h-3 w-3" />}
+                {formatPercent(card.change_percent)}
+              </span>
             </div>
           </div>
         </CardContent>
@@ -403,9 +530,7 @@ function StocksTab() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
+        <StocksTabSkeleton />
       ) : items.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -430,10 +555,131 @@ function StocksTab() {
   );
 }
 
+// ── Loading skeletons ──────────────────────────────────────────────
+
+function NewsSkeletonRow() {
+  return (
+    <div className="flex gap-4 py-4 px-4 border-b border-border last:border-0">
+      <div className="flex-1 space-y-2 min-w-0">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-5/6" />
+        <div className="flex gap-2 pt-1">
+          <Skeleton className="h-4 w-16 rounded-full" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarketSummarySkeleton() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <Card>
+          <CardContent className="p-0 divide-y divide-border">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <NewsSkeletonRow key={i} />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator />
+
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="h-[200px]">
+              <CardContent className="p-4 flex flex-col gap-3 h-full">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-12 rounded-full" />
+                  <Skeleton className="h-3 w-16 ml-auto" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <div className="space-y-2 flex-1">
+                  <div className="flex gap-2 items-start">
+                    <Skeleton className="h-1.5 w-1.5 rounded-full mt-1.5 shrink-0" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                  <div className="flex gap-2 items-start">
+                    <Skeleton className="h-1.5 w-1.5 rounded-full mt-1.5 shrink-0" />
+                    <Skeleton className="h-3 w-5/6" />
+                  </div>
+                  <div className="flex gap-2 items-start">
+                    <Skeleton className="h-1.5 w-1.5 rounded-full mt-1.5 shrink-0" />
+                    <Skeleton className="h-3 w-4/6" />
+                  </div>
+                </div>
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StocksTabSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex rounded-lg bg-muted p-0.5 gap-1">
+          <Skeleton className="h-8 w-24 rounded-md" />
+          <Skeleton className="h-8 w-28 rounded-md" />
+        </div>
+        <Skeleton className="h-9 w-full md:w-72 rounded-md" />
+      </div>
+      <div className="grid gap-2 auto-rows-fr md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[2200px]:grid-cols-6">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <Card key={i} className="h-[96px]">
+            <CardContent className="p-4 flex items-center gap-4 h-full">
+              <div className="flex-1 space-y-2 min-w-0">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-14 rounded-full" />
+                </div>
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+              <div className="text-right space-y-2 shrink-0">
+                <Skeleton className="h-4 w-16 ml-auto" />
+                <Skeleton className="h-4 w-12 ml-auto rounded-full" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────
 
 export default function MarketsPage() {
-  const [activeSection, setActiveSection] = useState<"news" | "stocks">("stocks");
+  const [activeSection, setActiveSection] = useState<"news" | "stocks">(() => {
+    if (typeof window === "undefined") return "stocks";
+    return new URLSearchParams(window.location.search).get("tab") === "news"
+      ? "news"
+      : "stocks";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("tab") === "news") {
+      setActiveSection("news");
+    }
+  }, []);
 
   const { data: newsData, isLoading: newsLoading } = useMarketNews();
   const { data: portfolioNews, isLoading: portfolioNewsLoading } =
@@ -482,14 +728,10 @@ export default function MarketsPage() {
         </div>
       </div>
 
-      {/* News section spreads across the app shell like the other protected
-          pages. Individual rows still keep their own padding/readability. */}
       {activeSection === "news" && (
         <>
           {newsLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <MarketSummarySkeleton />
           ) : (
             <div className="w-full space-y-6">
               <div>
@@ -541,10 +783,33 @@ export default function MarketsPage() {
                 )}
               </div>
 
-              {/* Portfolio News — grid (not a carousel) so the user can
-                  scan many cards at once. Visually distinct from Market
-                  Summary above, which is a vertical row list. */}
-              {portfolioNewsLoading ? null : portfolioNews?.articles?.length ? (
+              {portfolioNewsLoading ? (
+                <>
+                  <Separator />
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <Skeleton className="h-3 w-28" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                    <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Card key={i} className="h-[180px]">
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-5 w-12 rounded-full" />
+                              <Skeleton className="h-3 w-16 ml-auto" />
+                            </div>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-5/6" />
+                            <Skeleton className="h-3 w-full" />
+                            <Skeleton className="h-3 w-4/6" />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : portfolioNews?.articles?.length ? (
                 <>
                   <Separator />
                   <PortfolioNewsGrid
@@ -558,7 +823,6 @@ export default function MarketsPage() {
         </>
       )}
 
-      {/* Stocks section */}
       {activeSection === "stocks" && <StocksTab />}
     </div>
   );
