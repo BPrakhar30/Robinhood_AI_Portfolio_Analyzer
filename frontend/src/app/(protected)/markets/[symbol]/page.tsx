@@ -12,10 +12,14 @@ import {
 } from "recharts";
 import {
   ArrowLeft,
+  BarChart3,
+  BookOpen,
+  Brain,
   Building2,
   Calendar,
   ExternalLink,
   Loader2,
+  Sparkles,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -23,8 +27,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
+  useStockAnalysis,
   useStockCandles,
   useStockDetail,
 } from "@/features/stocks/hooks";
@@ -632,6 +638,199 @@ function DetailHeader({ data }: { data: StockDetailResponse }) {
   );
 }
 
+// ── AI Analysis ──────────────────────────────────────────────────
+
+function AnalysisSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-5 w-5 rounded" />
+        <Skeleton className="h-5 w-32" />
+      </div>
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-[90%]" />
+      <Skeleton className="h-4 w-[75%]" />
+      <Skeleton className="h-4 w-[85%]" />
+      <Skeleton className="h-4 w-[60%]" />
+    </div>
+  );
+}
+
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const regex = /\*\*(.+?)\*\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <span key={key++} className="font-semibold text-foreground">
+        {match[1]}
+      </span>,
+    );
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+}
+
+function splitInlineBullets(text: string): string[] | null {
+  const parts = text.split(/(?<=\.)\s+[*•\-]\s+/);
+  if (parts.length < 2) return null;
+  const preamble = parts[0].trim();
+  const bullets = parts.slice(1).map((p) => p.trim()).filter(Boolean);
+  if (bullets.length < 2) return null;
+  return [preamble, ...bullets];
+}
+
+function AnalysisSection({
+  icon,
+  title,
+  content,
+  accentColor,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  content: string;
+  accentColor: string;
+}) {
+  const blocks = content.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2.5">
+        <div className={cn("p-1.5 rounded-md", accentColor)}>
+          {icon}
+        </div>
+        <h4 className="text-sm font-semibold">{title}</h4>
+      </div>
+      <div className="space-y-3 text-sm text-muted-foreground leading-relaxed pl-[34px]">
+        {blocks.map((block, i) => {
+          const lines = block.split(/\n/).filter(Boolean);
+          const isList = lines.every(
+            (l) => /^[-*•]\s/.test(l) || /^\d+[\.\)]\s/.test(l),
+          );
+          if (isList) {
+            return (
+              <ul key={i} className="space-y-1.5">
+                {lines.map((item, j) => (
+                  <li key={j} className="flex gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                    <span>
+                      {renderInlineMarkdown(
+                        item.replace(/^[-*•]\s*/, "").replace(/^\d+[\.\)]\s*/, ""),
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+
+          const inlineParts = splitInlineBullets(block);
+          if (inlineParts) {
+            return (
+              <div key={i} className="space-y-2">
+                <p>{renderInlineMarkdown(inlineParts[0])}</p>
+                <ul className="space-y-1.5">
+                  {inlineParts.slice(1).map((item, j) => (
+                    <li key={j} className="flex gap-2">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                      <span>{renderInlineMarkdown(item)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+
+          return <p key={i}>{renderInlineMarkdown(block)}</p>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AiAnalysisCard({ symbol }: { symbol: string }) {
+  const { data, isLoading, isError } = useStockAnalysis(symbol);
+
+  return (
+    <Card className="relative overflow-hidden border-amber-500/30">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500" />
+      <CardContent className="p-5 sm:p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 ring-1 ring-amber-500/30">
+              <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold tracking-tight">
+                AI Analysis
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Powered by Portfolio Copilot
+              </p>
+            </div>
+          </div>
+          {data && (
+            <Badge className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20">
+              Updated {new Date(data.generated_at).toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </Badge>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-8">
+            <AnalysisSkeleton />
+            <Separator />
+            <AnalysisSkeleton />
+          </div>
+        ) : isError ? (
+          <div className="py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Analysis is temporarily unavailable. Please try again shortly.
+            </p>
+          </div>
+        ) : data ? (
+          <div className="space-y-6">
+            <AnalysisSection
+              icon={<BarChart3 className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+              title="Chart Analysis"
+              content={data.chart_analysis}
+              accentColor="bg-amber-500/10"
+            />
+            <Separator />
+            <AnalysisSection
+              icon={<BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+              title="News Analysis"
+              content={data.news_analysis}
+              accentColor="bg-blue-500/10"
+            />
+            {data.holdings_impact && (
+              <>
+                <Separator />
+                <AnalysisSection
+                  icon={<Brain className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                  title="What This Means for Your Position"
+                  content={data.holdings_impact}
+                  accentColor="bg-emerald-500/10"
+                />
+              </>
+            )}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────
 
 export default function StockDetailPage() {
@@ -690,6 +889,8 @@ export default function StockDetailPage() {
             <PriceChart symbol={symbol} />
             {data.position.owned && <PositionCard pos={data.position} />}
           </div>
+
+          <AiAnalysisCard symbol={symbol} />
 
           <div className={cn("grid gap-4", !isCrypto && "lg:grid-cols-2")}>
             {!isCrypto && <AboutCard profile={data.profile} />}

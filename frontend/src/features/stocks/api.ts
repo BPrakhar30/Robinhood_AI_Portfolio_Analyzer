@@ -2,6 +2,7 @@ import { api } from "@/lib/api/client";
 import type {
   CandleRange,
   PortfolioNewsResponse,
+  StockAnalysis,
   StockCandles,
   StockDetailResponse,
   StockUniverseResponse,
@@ -33,6 +34,12 @@ export async function fetchStockCandles(
 ): Promise<StockCandles> {
   return api.get<StockCandles>(
     `/api/v1/stocks/${encodeURIComponent(symbol)}/candles?range=${range}`,
+  );
+}
+
+export async function fetchStockAnalysis(symbol: string): Promise<StockAnalysis> {
+  return api.get<StockAnalysis>(
+    `/api/v1/stocks/${encodeURIComponent(symbol)}/analysis`,
   );
 }
 

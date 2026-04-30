@@ -108,6 +108,7 @@ export interface StockNewsItem {
   headline: string;
   summary: string;
   ai_summary?: string | null;
+  sentiment?: "positive" | "negative" | "neutral" | null;
   source: string;
   source_url?: string | null;
   url: string;
@@ -149,6 +150,15 @@ export interface StockCard {
   owned: boolean;
   price?: number | null;
   change_percent?: number | null;
+  logo?: string | null;
+}
+
+export interface StockAnalysis {
+  symbol: string;
+  chart_analysis: string;
+  news_analysis: string;
+  holdings_impact?: string | null;
+  generated_at: string;
 }
 
 export interface StockUniverseResponse {

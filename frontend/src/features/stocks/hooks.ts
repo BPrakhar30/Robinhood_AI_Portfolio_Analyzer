@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { CandleRange } from "./types";
 import {
   fetchPortfolioNews,
+  fetchStockAnalysis,
   fetchStockCandles,
   fetchStockDetail,
   fetchStockUniverse,
@@ -47,10 +48,21 @@ export function useStockCandles(
   });
 }
 
-export function usePortfolioNews() {
+export function useStockAnalysis(symbol: string | undefined) {
+  return useQuery({
+    queryKey: ["stocks", "analysis", symbol],
+    queryFn: () => fetchStockAnalysis(symbol!),
+    enabled: !!symbol,
+    staleTime: 15 * 60_000,
+    retry: 1,
+  });
+}
+
+export function usePortfolioNews(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["markets", "portfolio-news"],
     queryFn: fetchPortfolioNews,
+    enabled: options.enabled ?? true,
     staleTime: 5 * 60_000,
     refetchInterval: 5 * 60_000,
   });
