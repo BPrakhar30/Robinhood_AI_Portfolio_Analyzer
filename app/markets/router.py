@@ -93,5 +93,6 @@ async def get_portfolio_news(
         enriched = await enrich_portfolio_news(raw)
         for card, meta in zip(agg.articles, enriched):
             card.ai_summary = meta.get("ai_summary")
+            card.sentiment = meta.get("sentiment")
 
     return agg

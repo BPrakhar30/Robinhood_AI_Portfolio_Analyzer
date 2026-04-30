@@ -282,93 +282,244 @@ async def enrich_developments(articles: list[dict[str, Any]]) -> list[dict[str, 
 _LEADING_BULLET_RE = re.compile(r"^[\u2022\u2023\u25E6\u2043\-\*\s]+")
 
 
-def _normalize_three_bullets(raw: str, headline: str) -> str:
-    """Coerce model output into up to three "• " bullets, one per line.
+_SENTIMENT_RE = re.compile(
+    r"^SENTIMENT:\s*(POSITIVE|NEGATIVE|NEUTRAL)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 
-    Guarantees:
-      * Each line starts with exactly one "• " (frontend re-renders the
-        glyph itself, so a stray bullet from the model can never produce
-        the dreaded double-bullet "• • text" rendering).
-      * No two bullets carry the same content (case-insensitive). The
-        previous implementation padded with the headline when the model
-        returned <3 unique points, which is what produced the duplicate
-        third bullet visible in the UI screenshot.
-      * Returns whatever number of UNIQUE bullets we actually have — 1,
-        2, or 3. The frontend handles partial counts gracefully.
 
-    ``headline`` is unused for padding (intentional) but kept in the
-    signature in case future callers want it for ranking heuristics.
+def _extract_bullets_and_sentiment(raw_block: str) -> tuple[list[str], str]:
+    """Parse a single article's LLM output into (bullets_list, sentiment).
+
+    Handles every observed LLM output format: bullet lines, numbered
+    lines, prose, inline bullets, and sentiment tags.
     """
-    del headline  # padding is intentionally disabled
-    text = _strip_filler(raw) or ""
+    text = _strip_filler(raw_block) or ""
+
+    sentiment = "neutral"
+    sm = _SENTIMENT_RE.search(text)
+    if sm:
+        sentiment = sm.group(1).lower()
+        text = _SENTIMENT_RE.sub("", text).strip()
 
     raw_lines: list[str] = []
     for line in text.splitlines():
-        cleaned = _LEADING_BULLET_RE.sub("", line).strip()
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if re.match(r"^SENTIMENT:", stripped, re.IGNORECASE):
+            continue
+        cleaned = _LEADING_BULLET_RE.sub("", stripped).strip()
         cleaned = re.sub(r"^\d+[\.\)]\s*", "", cleaned).strip()
-        if cleaned:
-            raw_lines.append(cleaned)
+        if not cleaned:
+            continue
+        for part in re.split(r"\s*[•]\s*", cleaned):
+            part = part.strip()
+            if part and not re.match(r"^SENTIMENT:", part, re.IGNORECASE):
+                raw_lines.append(part)
 
-    # If the model emitted prose instead of bullets, fall back to
-    # sentence-splitting on the original text.
     if len(raw_lines) < 2:
         raw_lines = [
-            s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()
+            s.strip()
+            for s in re.split(r"(?<=[.!?])\s+", text)
+            if s.strip() and not re.match(r"^SENTIMENT:", s.strip(), re.IGNORECASE)
         ]
 
     seen: set[str] = set()
     unique: list[str] = []
     for line in raw_lines:
-        key = re.sub(r"\s+", " ", line).strip().lower()
+        normalized = re.sub(r"\s+", " ", line).strip()
+        key = normalized.lower()
         if not key or key in seen:
             continue
         seen.add(key)
-        unique.append(line.rstrip("."))
+        if not normalized.endswith((".","!","?")):
+            normalized += "."
+        unique.append(normalized)
         if len(unique) == 3:
             break
 
-    return "\n".join(f"• {line}." for line in unique)
+    return unique, sentiment
+
+
+def _format_cached_entry(bullets: list[str], sentiment: str) -> str:
+    """Serialize bullets + sentiment into a stable JSON cache entry."""
+    import json
+    return json.dumps({"bullets": bullets, "sentiment": sentiment})
+
+
+def _parse_cached_entry(raw: str) -> tuple[list[str], str]:
+    """Deserialize a cached JSON entry. Falls back gracefully."""
+    import json
+    try:
+        data = json.loads(raw)
+        return data["bullets"], data["sentiment"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return [], "neutral"
+
+
+_POSITIVE_KEYWORDS = re.compile(
+    r"\b(bullish|positive|upside|benefit|gain|growth|beat|strong|upgrade|"
+    r"outperform|opportunity|tailwind|favorable|holders.*benefit|"
+    r"good news|encouraging|well.?positioned)\b",
+    re.IGNORECASE,
+)
+_NEGATIVE_KEYWORDS = re.compile(
+    r"\b(bearish|negative|downside|risk|loss|decline|miss|weak|downgrade|"
+    r"underperform|threat|headwind|concern|caution|holders.*risk|"
+    r"bad news|worrying|pressure|vulnerable|warning)\b",
+    re.IGNORECASE,
+)
+
+
+def _infer_sentiment(bullets: list[str]) -> str:
+    """Infer sentiment from bullet content when the LLM omits the tag.
+
+    Scans all bullets (especially bullet 3 — portfolio impact) for
+    positive/negative signal words. Returns "positive", "negative", or
+    "neutral".
+    """
+    text = " ".join(bullets)
+    pos = len(_POSITIVE_KEYWORDS.findall(text))
+    neg = len(_NEGATIVE_KEYWORDS.findall(text))
+    if pos > neg:
+        return "positive"
+    if neg > pos:
+        return "negative"
+    return "neutral"
+
+
+async def _portfolio_news_raw_summarize(
+    articles: list[dict[str, Any]],
+) -> Optional[str]:
+    """Call the LLM with raw text output (not list[str]) for portfolio news.
+
+    Returns the full raw text from the model, or None on failure.
+    Using raw text avoids the list[str] structured-output problem where
+    PydanticAI splits multi-line bullets into separate list elements.
+    """
+    if not articles:
+        return None
+
+    settings = get_settings()
+    if not settings.google_api_key:
+        return None
+
+    try:
+        model = GoogleModel(
+            settings.google_model,
+            provider=GoogleProvider(api_key=settings.google_api_key),
+        )
+        agent: Agent[None, str] = Agent(model, output_type=str)
+
+        prompt = (
+            f"{PORTFOLIO_NEWS_SUMMARY_PROMPT}\n\n"
+            f"Here are the {len(articles)} articles:\n\n"
+            f"{_format_articles_for_prompt(articles)}\n\n"
+            f"Produce the bullet blocks now. Remember: EVERY article "
+            f"MUST have exactly 3 bullets AND a SENTIMENT tag."
+        )
+
+        result = await agent.run(prompt)
+        return result.output
+    except ModelHTTPError as exc:
+        logger.warning(f"Portfolio news summarization rate-limited: status={exc.status_code}")
+        return None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Portfolio news summarization failed: {exc}")
+        return None
+
+
+def _extract_all_sentiments(raw: str) -> list[str]:
+    """Extract ALL SENTIMENT tags from the raw LLM output in order.
+
+    This runs BEFORE block splitting so sentiment tags are never lost
+    to incorrect block boundaries.
+    """
+    return [m.group(1).lower() for m in _SENTIMENT_RE.finditer(raw)]
+
+
+def _split_raw_into_article_blocks(raw: str, article_count: int) -> list[str]:
+    """Split the raw LLM output into per-article blocks.
+
+    First strips all SENTIMENT lines (already extracted separately),
+    then splits on blank lines and merges to match article count.
+    """
+    clean = _SENTIMENT_RE.sub("", raw).strip()
+    blocks = re.split(r"\n\s*\n", clean)
+    blocks = [b.strip() for b in blocks if b.strip()]
+
+    if len(blocks) == article_count:
+        return blocks
+
+    if len(blocks) > article_count:
+        merged: list[str] = []
+        per = max(1, len(blocks) // article_count)
+        for i in range(article_count):
+            start = i * per
+            end = start + per if i < article_count - 1 else len(blocks)
+            merged.append("\n".join(blocks[start:end]))
+        return merged
+
+    while len(blocks) < article_count:
+        blocks.append("")
+    return blocks[:article_count]
 
 
 async def enrich_portfolio_news(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Attach a strict 3-bullet ``ai_summary`` to each portfolio-news card.
+    """Attach a 3-bullet ``ai_summary`` and ``sentiment`` to each portfolio-news card.
 
-    Cached separately from headlines/developments so the 3-bullet shape
-    can never be polluted by a previously cached prose summary.
+    Architecture:
+    1. Extract ALL SENTIMENT tags from the raw text BEFORE splitting —
+       this prevents tags from being lost to block-boundary errors.
+    2. Strip sentiment lines, then split into per-article bullet blocks.
+    3. For any article missing an explicit SENTIMENT tag, infer it from
+       bullet content using keyword matching (ensures every article
+       always has a sentiment).
+    4. Cache as JSON for stability.
     """
     if not articles:
         return articles
 
-    # ``:pnews2`` namespace forces a refresh after the dedupe-and-no-padding
-    # rewrite; the previous ``:pnews`` cache is full of headline-padded
-    # entries that produced duplicate bullets in the UI.
-    keys = [_hash_url(a.get("url", ""), a.get("title", "")) + ":pnews2" for a in articles]
+    cache_ns = ":pnews5"
+    keys = [_hash_url(a.get("url", ""), a.get("title", "")) + cache_ns for a in articles]
     cached = [_cache_get(k) for k in keys]
 
     misses = [i for i, c in enumerate(cached) if c is None]
-    new_summaries: list[Optional[str]] = []
     if misses:
-        new_summaries = await _batch_summarize(
-            [articles[i] for i in misses],
-            PORTFOLIO_NEWS_SUMMARY_PROMPT,
-            kind="portfolio_news",
-        )
-        for i, s in zip(misses, new_summaries):
-            if s:
-                normalized = _normalize_three_bullets(s, articles[i].get("title", ""))
-                if normalized:
-                    _cache_set(keys[i], normalized)
+        miss_articles = [articles[i] for i in misses]
+        raw_text = await _portfolio_news_raw_summarize(miss_articles)
 
-    miss_iter = iter(new_summaries)
+        if raw_text:
+            sentiments = _extract_all_sentiments(raw_text)
+            blocks = _split_raw_into_article_blocks(raw_text, len(miss_articles))
+
+            for idx, (miss_i, block) in enumerate(zip(misses, blocks)):
+                bullets, _block_sentiment = _extract_bullets_and_sentiment(block)
+
+                if idx < len(sentiments):
+                    sentiment = sentiments[idx]
+                elif _block_sentiment != "neutral":
+                    sentiment = _block_sentiment
+                else:
+                    sentiment = _infer_sentiment(bullets)
+
+                entry = _format_cached_entry(bullets, sentiment)
+                _cache_set(keys[miss_i], entry)
+                cached[miss_i] = entry
+
     enriched: list[dict[str, Any]] = []
-    for art, cached_summary in zip(articles, cached):
-        if cached_summary is not None:
-            ai_summary = cached_summary
+    for art, entry in zip(articles, cached):
+        if entry is not None:
+            bullets, sentiment = _parse_cached_entry(entry)
         else:
-            raw = next(miss_iter, None)
-            normalized = _normalize_three_bullets(raw or "", art.get("title", ""))
-            ai_summary = normalized or None
-        enriched.append({**art, "ai_summary": ai_summary})
+            bullets, sentiment = [], "neutral"
+
+        if sentiment == "neutral" and bullets:
+            sentiment = _infer_sentiment(bullets)
+
+        ai_summary = "\n".join(f"• {b}" for b in bullets) if bullets else None
+        enriched.append({**art, "ai_summary": ai_summary, "sentiment": sentiment})
     return enriched
 
 

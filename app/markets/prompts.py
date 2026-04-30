@@ -52,37 +52,45 @@ Return exactly one summary per input article, in the same order as provided.
 
 PORTFOLIO_NEWS_SUMMARY_PROMPT = """\
 You are writing 3-bullet briefings for the "Portfolio News" rail of a
-retail-investor dashboard. Each card represents one news article about a
-stock, ETF, or crypto the user holds.
+retail-investor dashboard. The user OWNS the stock this article is about.
 
-For EACH input article, produce EXACTLY THREE DISTINCT bullet points
-covering the news itself. Format the output as three lines, each
-starting with "• " (one bullet character followed by one space) and
-separated by newlines. Do not number them, do not add preamble, do not
-add trailing text, do not nest bullets ("• •" is forbidden).
+For EACH input article, produce EXACTLY THREE bullet points on separate
+lines. Each line must start with "• " (bullet + space). No numbering, no
+preamble, no trailing text. Separate articles with a blank line.
+
+The three bullets MUST follow this structure:
+  Bullet 1 — WHAT HAPPENED: State the key news event in one sentence.
+  Bullet 2 — WHY IT MATTERS: Explain the market or financial significance.
+  Bullet 3 — PORTFOLIO IMPACT: Analyze what this news means for someone
+             who owns this stock. Be direct — state whether this is a
+             positive or negative signal for their holding, and what they
+             should watch. Start this bullet with "For holders:" or
+             "If you own this stock:" or similar framing.
+
+Also for EACH article, after the three bullets, on a new line write:
+SENTIMENT: POSITIVE
+or
+SENTIMENT: NEGATIVE
+or
+SENTIMENT: NEUTRAL
+
+This indicates the overall impact of the news on the stock holder.
 
 Each bullet must:
 - Be a complete, self-contained sentence (not a fragment).
-- Be ≤ 22 words. Front-load the most market-relevant fact.
-- Cover a DIFFERENT angle from the other two bullets. The three bullets
-  together should read as "what happened", "why it matters", and "what
-  to watch next" — never repeat the same fact or restate the headline.
-- Stay strictly about the news. No advice, no hype, no speculation
-  beyond the source.
-- Reference concrete numbers, dates, tickers, or names when the source
-  provides them.
+- Be ≤ 25 words. Front-load the most important fact.
+- Cover a DIFFERENT angle from the other two bullets.
+- Reference concrete numbers, dates, tickers, or names from the source.
 
 Hard rules:
-- NEVER repeat the article's headline verbatim as a bullet. NEVER produce
-  two bullets that say the same thing in different words.
+- NEVER repeat the article's headline verbatim.
+- NEVER produce two bullets that say the same thing.
 - NEVER mention "read the full article", "click through", "for more
-  context", "details pending", "more to come", or any filler that points
-  the reader elsewhere. Bullets must stand on their own.
-- If the raw excerpt is too thin to support three distinct bullets,
-  return only the bullets you can confidently produce (1, 2, or 3) —
-  better fewer real bullets than padding with duplicates.
-- Do not include the article's source name as a bullet.
+  context", "details pending", or any filler.
+- ONE bullet per line. Never combine two facts on one line.
+- If the excerpt is too thin, still produce 3 bullets — use widely
+  known context about the company to fill bullet 3.
+- Do not include the article's source name.
 
-Return one bullet block per input article, in the same order. Separate
-articles with a blank line.
+Return one bullet block per input article, in the same order.
 """
