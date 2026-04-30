@@ -12,11 +12,14 @@ import {
   AlertTriangle,
   ShieldAlert,
   Bell,
+  Newspaper,
+  ThumbsUp,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { useConnections, usePositions, useSummary } from "@/features/brokers/hooks";
 import { useHealth } from "@/features/system/hooks";
 import { useHealthScore, useRiskAlerts } from "@/features/portfolio-health/hooks";
+import { usePortfolioNews } from "@/features/stocks/hooks";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
@@ -41,10 +44,17 @@ export default function DashboardPage() {
   const { data: riskAlerts } = useRiskAlerts();
 
   const isLoading = connLoading || posLoading || sumLoading;
+  const hasConnections = !!connections?.length;
+  const { data: portfolioNews, isLoading: portfolioNewsLoading } = usePortfolioNews({
+    enabled: hasConnections,
+  });
 
   if (isLoading) return <PageSkeleton />;
 
-  const hasConnections = connections && connections.length > 0;
+  const portfolioArticles = portfolioNews?.articles ?? [];
+  const portfolioRiskCount = portfolioArticles.filter((a) => a.sentiment === "negative").length;
+  const portfolioPositiveCount = portfolioArticles.filter((a) => a.sentiment === "positive").length;
+  const portfolioNewsCount = portfolioArticles.length;
 
   return (
     <div className="space-y-6">
@@ -115,9 +125,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Health Score + Risk Alerts row */}
-      {hasConnections && (healthScore || riskAlerts) && (
-        <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+      {/* Health Score + Risk Alerts + Portfolio News row */}
+      {hasConnections && (healthScore || riskAlerts || portfolioNewsLoading || portfolioNewsCount > 0) && (
+        <div className="grid gap-4 grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3">
           {/* Health Score badge */}
           {healthScore && (
             <Link href="/health" className="group block h-full">
@@ -217,6 +227,48 @@ export default function DashboardPage() {
               </Card>
             </Link>
           )}
+
+          {/* Portfolio News widget */}
+          <Link href="/markets?tab=news" className="group block h-full">
+            <Card className="h-full cursor-pointer border-border/80 transition-all hover:-translate-y-0.5 hover:border-amber-500/60 hover:bg-amber-50/40 hover:shadow-md dark:hover:bg-amber-950/15">
+              <CardContent className="py-5 px-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10">
+                    <Newspaper className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Portfolio News</p>
+                    <p className="text-xs text-muted-foreground">
+                      Risk and positive updates across your holdings
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      {portfolioNewsLoading ? (
+                        <span className="text-xs text-muted-foreground">Checking latest stories…</span>
+                      ) : (
+                        <>
+                          <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 text-[10px] px-1.5 py-0 gap-0.5">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            Risks {portfolioRiskCount}
+                          </Badge>
+                          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] px-1.5 py-0 gap-0.5">
+                            <ThumbsUp className="h-2.5 w-2.5" />
+                            Positives {portfolioPositiveCount}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                            {portfolioNewsCount} total
+                          </Badge>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 px-3 py-1 text-xs font-medium text-amber-700 transition-colors group-hover:bg-amber-500 group-hover:text-white dark:text-amber-400">
+                    Open news
+                    <ArrowRight className="h-3 w-3" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       )}
 
