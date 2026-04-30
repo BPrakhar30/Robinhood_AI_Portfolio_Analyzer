@@ -158,6 +158,7 @@ class StockNewsItem(BaseModel):
     headline: str
     summary: str = ""
     ai_summary: Optional[str] = None
+    sentiment: Optional[str] = None  # "positive", "negative", "neutral" for portfolio news
     source: str
     source_url: Optional[str] = None
     url: str
@@ -220,6 +221,7 @@ class StockCardOut(BaseModel):
     owned: bool = False
     price: Optional[float] = None
     change_percent: Optional[float] = None
+    logo: Optional[str] = None
 
 
 class StockUniverseResponse(BaseModel):
@@ -238,3 +240,16 @@ class PortfolioNewsResponse(BaseModel):
     articles: list[StockNewsItem] = Field(default_factory=list)
     symbols: list[str] = Field(default_factory=list)
     updated_at: datetime
+
+
+# ── AI stock analysis ────────────────────────────────────────────────
+
+
+class StockAnalysisResponse(BaseModel):
+    """AI-generated analysis combining chart, news, and holdings context."""
+
+    symbol: str
+    chart_analysis: str
+    news_analysis: str
+    holdings_impact: Optional[str] = None
+    generated_at: datetime

@@ -13,6 +13,7 @@ endpoint.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,8 +24,10 @@ from app.auth.service import get_current_user
 from app.database.engine import get_async_session
 from app.database.models import Position, User
 
+from .ai_analysis import generate_stock_analysis
 from .schemas import (
     CandleRange,
+    StockAnalysisResponse,
     StockCandles,
     StockDetailResponse,
     StockPositionSummary,
@@ -33,8 +36,10 @@ from .schemas import (
 from .service import (
     build_position_summary,
     fetch_candles,
+    fetch_key_stats,
     fetch_quote,
     fetch_stock_detail,
+    fetch_symbol_news,
     fetch_universe_cards,
 )
 
@@ -196,3 +201,40 @@ async def get_stock_candles(
             status_code=502,
             detail=f"Chart data temporarily unavailable: {exc}",
         ) from exc
+
+
+# ──────────────────────────────────────────────────────────────────────
+# AI analysis
+# ──────────────────────────────────────────────────────────────────────
+
+
+@router.get("/{symbol}/analysis", response_model=StockAnalysisResponse)
+async def get_stock_analysis(
+    symbol: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
+):
+    """AI-generated analysis combining chart, news, and user holdings context."""
+    symbol = symbol.upper().strip()
+    if not symbol or len(symbol) > 12:
+        raise HTTPException(status_code=400, detail="Invalid symbol")
+
+    position = await _build_position_summary(symbol, db, current_user.id)
+
+    candles_task = fetch_candles(symbol, "3M")
+    quote_task = fetch_quote(symbol)
+    stats_task = fetch_key_stats(symbol)
+    news_task = fetch_symbol_news(symbol)
+
+    candles, quote, stats, news = await asyncio.gather(
+        candles_task, quote_task, stats_task, news_task,
+    )
+
+    return await generate_stock_analysis(
+        symbol=symbol,
+        candles_data=candles.model_dump(mode="json"),
+        quote_data=quote.model_dump(mode="json"),
+        key_stats_data=stats.model_dump(mode="json"),
+        news_articles=[a.model_dump(mode="json") for a in news.articles[:10]],
+        position_data=position.model_dump(mode="json") if position.owned else None,
+    )

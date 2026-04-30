@@ -1209,6 +1209,115 @@ async def fetch_stock_detail(
 
 # ── Universe listing ─────────────────────────────────────────────────
 
+_LOGO_CDN = "https://financialmodelingprep.com/image-stock"
+
+
+def _logo_url(symbol: str, asset_type: str = "stock") -> Optional[str]:
+    """Free CDN logo for US equities and ETFs."""
+    if asset_type == "crypto":
+        return None
+    return f"{_LOGO_CDN}/{symbol}.png"
+
+
+def _yf_batch_download(symbols: list[str]) -> dict[str, dict]:
+    """Synchronous: call ``yf.download`` for many tickers in one batch.
+
+    Returns ``{SYMBOL: {"price": float, "prev_close": float, "change_pct": float}}``.
+    """
+    import pandas as pd  # local import — only needed here
+
+    if not symbols:
+        return {}
+    try:
+        df = yf.download(
+            tickers=" ".join(symbols),
+            period="2d",
+            interval="1d",
+            group_by="ticker",
+            threads=True,
+            progress=False,
+            auto_adjust=False,
+        )
+    except Exception as exc:
+        logger.warning(f"yf.download batch failed: {exc}")
+        return {}
+
+    if df is None or df.empty:
+        return {}
+
+    result: dict[str, dict] = {}
+
+    # Single-ticker download doesn't group by ticker — columns are flat OHLCV.
+    if len(symbols) == 1:
+        sym = symbols[0]
+        try:
+            closes = df["Close"].dropna()
+            if len(closes) >= 2:
+                price = float(closes.iloc[-1])
+                prev = float(closes.iloc[-2])
+            elif len(closes) == 1:
+                price = float(closes.iloc[-1])
+                prev = price
+            else:
+                return {}
+            change_pct = ((price - prev) / prev * 100.0) if prev else 0.0
+            # Map back from yahoo symbol (e.g. BTC-USD) to original
+            orig = next((s for s in symbols if _market_symbol(s) == sym or s == sym), sym)
+            result[orig] = {"price": price, "prev_close": prev, "change_pct": change_pct}
+        except Exception:
+            pass
+        return result
+
+    for sym in symbols:
+        try:
+            if sym not in df.columns.get_level_values(0):
+                continue
+            ticker_df = df[sym]
+            closes = ticker_df["Close"].dropna()
+            if len(closes) >= 2:
+                price = float(closes.iloc[-1])
+                prev = float(closes.iloc[-2])
+            elif len(closes) == 1:
+                price = float(closes.iloc[-1])
+                prev = price
+            else:
+                continue
+            change_pct = ((price - prev) / prev * 100.0) if prev else 0.0
+            result[sym] = {"price": price, "prev_close": prev, "change_pct": change_pct}
+        except Exception:
+            continue
+    return result
+
+
+async def _yf_batch_quotes(symbols: list[str]) -> dict[str, dict]:
+    """Fetch quotes for many symbols in one ``yf.download`` call.
+
+    Returns ``{ORIGINAL_SYMBOL: {"price": ..., "prev_close": ..., "change_pct": ...}}``.
+    Cached under ``batch_quotes`` key with QUOTE_TTL.
+    """
+    cached = _cache_get("batch_quotes", QUOTE_TTL)
+    if cached is not None:
+        return cached
+
+    # Build mapping: yahoo_symbol -> original_symbol
+    yahoo_to_orig: dict[str, str] = {}
+    yahoo_symbols: list[str] = []
+    for sym in symbols:
+        ysym = _market_symbol(sym)
+        yahoo_to_orig[ysym] = sym
+        yahoo_symbols.append(ysym)
+
+    raw = await asyncio.to_thread(_yf_batch_download, yahoo_symbols)
+
+    # Re-key from yahoo symbols back to original symbols
+    out: dict[str, dict] = {}
+    for ysym, data in raw.items():
+        orig = yahoo_to_orig.get(ysym, ysym)
+        out[orig] = data
+
+    _cache_set("batch_quotes", out)
+    return out
+
 
 async def fetch_universe_cards(
     *,
@@ -1272,43 +1381,49 @@ async def fetch_universe_cards(
         ),
     )[:limit]
 
-    # Enrich with live quote (only for the visible page — keeps yfinance happy).
+    # Enrich with live quotes via a single batch download.
     cards: list[StockCardOut] = []
-    if live_quotes and items_sorted:
-        sem = asyncio.Semaphore(6)  # gentle parallelism for yfinance
+    if live_quotes and items_sorted and _YF_AVAILABLE:
+        all_symbols = [e["symbol"] for e in items_sorted]
+        batch = await _yf_batch_quotes(all_symbols)
 
-        async def _enrich(entry: dict[str, Any]) -> StockCardOut:
-            async with sem:
-                q = await fetch_quote(entry["symbol"])
+        for entry in items_sorted:
+            sym = entry["symbol"]
             asset_type = _normalize_card_asset_type(
                 entry.get("asset_type"),
                 sector=entry.get("sector"),
             )
-            return StockCardOut(
-                symbol=entry["symbol"],
-                name=entry.get("name") or entry["symbol"],
-                sector=entry.get("sector"),
-                asset_type=asset_type,  # type: ignore[arg-type]
-                owned=entry["symbol"] in owned_symbols,
-                price=entry.get("price") or q.price,
-                change_percent=q.change_percent,
+            quote_data = batch.get(sym, {})
+            price = quote_data.get("price") or entry.get("price")
+            change_pct = quote_data.get("change_pct")
+            cards.append(
+                StockCardOut(
+                    symbol=sym,
+                    name=entry.get("name") or sym,
+                    sector=entry.get("sector"),
+                    asset_type=asset_type,  # type: ignore[arg-type]
+                    owned=sym in owned_symbols,
+                    price=price,
+                    change_percent=change_pct,
+                    logo=_logo_url(sym, asset_type),
+                )
             )
-
-        cards = await asyncio.gather(*[_enrich(e) for e in items_sorted])
     else:
         for entry in items_sorted:
+            sym = entry["symbol"]
             asset_type = _normalize_card_asset_type(
                 entry.get("asset_type"),
                 sector=entry.get("sector"),
             )
             cards.append(
                 StockCardOut(
-                    symbol=entry["symbol"],
-                    name=entry.get("name") or entry["symbol"],
+                    symbol=sym,
+                    name=entry.get("name") or sym,
                     sector=entry.get("sector"),
                     asset_type=asset_type,  # type: ignore[arg-type]
-                    owned=entry["symbol"] in owned_symbols,
+                    owned=sym in owned_symbols,
                     price=entry.get("price"),
+                    logo=_logo_url(sym, asset_type),
                 )
             )
 
