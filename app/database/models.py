@@ -94,6 +94,9 @@ class User(Base):
     chat_sessions = relationship(
         "ChatSession", back_populates="user", cascade="all, delete-orphan"
     )
+    memory = relationship(
+        "UserMemory", back_populates="user", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class BrokerConnection(Base):
@@ -279,6 +282,33 @@ class ChatMessage(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, index=True)
 
     session = relationship("ChatSession", back_populates="messages")
+
+
+class UserMemory(Base):
+    """Persistent cross-session memory for the AI portfolio assistant.
+
+    Each user has at most one row. ``facts`` is a JSON array of short strings
+    (≤ 25 items) extracted by the LLM from completed conversations — things
+    like investment style, risk tolerance, goals, and frequently discussed
+    tickers. They are injected into the system prompt of every future session
+    so the assistant feels contextually aware across conversations.
+
+    This intentionally uses a simple, auditable format (list of plain strings)
+    rather than a vector embedding store so users can reason about what the
+    assistant remembers about them.
+    """
+
+    __tablename__ = "user_memory"
+
+    user_id = Column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    facts = Column(JSON, nullable=False, default=list)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user = relationship("User", back_populates="memory")
 
 
 class SymbolMetadata(Base):

@@ -25,6 +25,7 @@ from app.chat.service import (
 from app.utils.logging import get_logger
 
 from .agent import AssistantDeps, get_agent
+from .memory import format_memory_for_prompt, get_user_memory, schedule_memory_extraction
 from .models import AssistantAnswer
 from .title import generate_session_title
 
@@ -73,9 +74,7 @@ class AssistantService:
     """Answer portfolio questions for a specific authenticated user."""
 
     def __init__(self, session: AsyncSession, user_id: UUID):
-        # For chat persistence only; portfolio data comes from the MCP server.
         self._db = session
-        self._deps = AssistantDeps(user_id=user_id)
         self._user_id = user_id
 
     async def ask(self, question: str) -> AssistantAnswer:
@@ -84,10 +83,18 @@ class AssistantService:
         if not question:
             return AssistantAnswer(answer="Please ask a question about your portfolio.")
 
+        memory_facts = await get_user_memory(self._db, self._user_id)
+        deps = AssistantDeps(
+            user_id=self._user_id,
+            user_memory=format_memory_for_prompt(memory_facts),
+        )
         agent = get_agent()
-        result = await agent.run(question, deps=self._deps)
+        result = await agent.run(question, deps=deps)
 
         tools_used = _collect_tools_used(result)
+        answer = str(result.output)
+
+        schedule_memory_extraction(self._user_id, question, answer)
 
         logger.info(
             "Assistant answered",
@@ -98,7 +105,7 @@ class AssistantService:
             },
         )
 
-        return AssistantAnswer(answer=str(result.output), tools_used=tools_used)
+        return AssistantAnswer(answer=answer, tools_used=tools_used)
 
     async def stream(
         self,
@@ -122,6 +129,14 @@ class AssistantService:
             }
             yield {"type": "done", "tools_used": []}
             return
+
+        # Fetch cross-session memory facts BEFORE loading the chat session so
+        # they're ready to inject into deps regardless of the session path.
+        memory_facts = await get_user_memory(self._db, self._user_id)
+        deps = AssistantDeps(
+            user_id=self._user_id,
+            user_memory=format_memory_for_prompt(memory_facts),
+        )
 
         chat_session = None
         message_history = None
@@ -153,7 +168,7 @@ class AssistantService:
         final_text_parts: list[str] = []
         async with agent.run_stream(
             question,
-            deps=self._deps,
+            deps=deps,
             message_history=message_history,
         ) as result:
             async for delta in result.stream_text(delta=True):
@@ -171,6 +186,10 @@ class AssistantService:
             )
 
         final_text = "".join(final_text_parts)
+
+        # Fire-and-forget: extract any memorable facts from this turn.
+        # Runs as a background task so it never delays the SSE response.
+        schedule_memory_extraction(self._user_id, question, final_text)
 
         if session_id is not None and chat_session is not None:
             new_title: Optional[str] = None

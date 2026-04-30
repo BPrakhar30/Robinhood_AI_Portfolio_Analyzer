@@ -28,9 +28,13 @@ from .prompts import SYSTEM_PROMPT
 
 @dataclass
 class AssistantDeps:
-    """Per-request deps. Only the authenticated user's UUID."""
+    """Per-request deps passed to every tool call and system-prompt function."""
 
     user_id: UUID
+    # Pre-fetched from UserMemory before the run — empty string for new users.
+    # Injected into the system prompt via the @agent.system_prompt decorator
+    # below so the LLM is aware of cross-session context.
+    user_memory: str = ""
 
 
 async def _inject_user_id(
@@ -65,8 +69,6 @@ def _build_agent() -> Agent[AssistantDeps, str]:
         process_tool_call=_inject_user_id,
     )
 
-    # DuckDuckGo is a regular agent tool (no API key, works with any model).
-    # The prompt keeps account-specific queries on MCP.
     agent = Agent(
         model,
         deps_type=AssistantDeps,
@@ -75,6 +77,15 @@ def _build_agent() -> Agent[AssistantDeps, str]:
         toolsets=[mcp_server],
         tools=[duckduckgo_search_tool()],
     )
+
+    # Dynamic system prompt part: inject cross-session memory facts that
+    # were pre-fetched by the service layer and stored in deps.user_memory.
+    # PydanticAI calls this function once per run, after the static
+    # SYSTEM_PROMPT, so the agent sees both.
+    @agent.system_prompt
+    def inject_user_memory(ctx: RunContext[AssistantDeps]) -> str:
+        return ctx.deps.user_memory  # empty string → no extra prompt part
+
     return agent
 
 
