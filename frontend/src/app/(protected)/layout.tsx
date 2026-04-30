@@ -3,6 +3,7 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Topbar } from "@/components/layout/topbar";
 import { AuthGuard } from "@/components/layout/auth-guard";
 import { ChatHydrator } from "@/features/chat/chat-hydrator";
+import { DataPrefetcher } from "@/components/layout/data-prefetcher";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   return (
     <AuthGuard>
       <ChatHydrator />
+      <DataPrefetcher />
       <div className="flex h-screen overflow-hidden">
         <SidebarNav />
         <div className="flex-1 flex flex-col min-w-0 relative">

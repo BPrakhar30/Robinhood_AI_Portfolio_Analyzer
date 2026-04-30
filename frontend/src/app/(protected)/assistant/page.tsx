@@ -430,7 +430,7 @@ export default function AssistantPage() {
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                   {temporaryMode
                     ? "This conversation won't be saved to your history."
-                    : "I have full context of your portfolio — ask away."}
+                    : "I have full context of your portfolio - ask away."}
                 </p>
               </div>
 
