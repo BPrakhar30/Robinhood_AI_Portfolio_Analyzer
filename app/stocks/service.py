@@ -62,7 +62,9 @@ FINNHUB_BASE = "https://finnhub.io/api/v1"
 
 # ── In-memory caches ──────────────────────────────────────────────────
 
-_cache: dict[str, tuple[float, Any]] = {}
+from app.utils.cache import BoundedTTLCache
+
+_cache = BoundedTTLCache(maxsize=4096, default_ttl=900)
 
 QUOTE_TTL = 60           # 1 min — prices move
 PROFILE_TTL = 24 * 3600  # 24 h — profiles rarely change
@@ -85,15 +87,14 @@ _RANGE_PARAMS: dict[CandleRange, tuple[str, str]] = {
 }
 
 
-def _cache_get(key: str, ttl: int) -> Any | None:
-    entry = _cache.get(key)
-    if entry and (time.time() - entry[0]) < ttl:
-        return entry[1]
-    return None
+def _cache_get(key: str, ttl: int = 0) -> Any | None:
+    """Read from bounded cache. *ttl* param is kept for call-site compat but
+    the actual TTL is enforced at write time via ``_cache_set``."""
+    return _cache.get(key)
 
 
-def _cache_set(key: str, value: Any) -> None:
-    _cache[key] = (time.time(), value)
+def _cache_set(key: str, value: Any, ttl: int | None = None) -> None:
+    _cache.set(key, value, ttl=ttl or 900)
 
 
 # ── Universe ─────────────────────────────────────────────────────────
@@ -292,7 +293,7 @@ async def fetch_quote(symbol: str) -> StockQuote:
             market_state=str(fi.get("market_state") or fi.get("marketState") or "") or None,
             as_of=datetime.now(timezone.utc),
         )
-    _cache_set(key, quote)
+    _cache_set(key, quote, ttl=QUOTE_TTL)
     return quote
 
 
@@ -461,7 +462,8 @@ async def fetch_candles(symbol: str, range_: CandleRange) -> StockCandles:
         change=change,
         change_percent=change_pct,
     )
-    _cache_set(key, out)
+    candle_ttl = CANDLES_TTL_FAST if range_ in ("1D", "1W") else CANDLES_TTL_SLOW
+    _cache_set(key, out, ttl=candle_ttl)
     return out
 
 
@@ -583,7 +585,7 @@ async def fetch_key_stats(symbol: str) -> StockKeyStats:
             short_ratio=_m("shortInterestRatio"),
             shares_outstanding=(shares_m * 1_000_000 if shares_m is not None else None),
         )
-    _cache_set(key, stats)
+    _cache_set(key, stats, ttl=KEYSTATS_TTL)
     return stats
 
 
@@ -655,7 +657,7 @@ async def fetch_profile(symbol: str) -> StockProfile:
             sector="Cryptocurrency",
             industry="Digital Assets",
         )
-        _cache_set(key, profile)
+        _cache_set(key, profile, ttl=PROFILE_TTL)
         return profile
 
     # 1) Finnhub /stock/profile2 — canonical source for sector/industry/logo.
@@ -735,7 +737,7 @@ async def fetch_profile(symbol: str) -> StockProfile:
         founded=founded,
         ipo_date=ipo,
     )
-    _cache_set(key, profile)
+    _cache_set(key, profile, ttl=PROFILE_TTL)
     return profile
 
 
@@ -829,7 +831,7 @@ async def fetch_earnings(symbol: str, *, history: int = 4) -> StockEarnings:
         break
 
     out = StockEarnings(symbol=symbol, next_event=next_event, history=past)
-    _cache_set(key, out)
+    _cache_set(key, out, ttl=EARNINGS_TTL)
     return out
 
 
@@ -1103,7 +1105,7 @@ async def fetch_symbol_news(symbol: str, *, limit: int = 12) -> StockNewsRespons
         articles=items,
         updated_at=datetime.now(timezone.utc),
     )
-    _cache_set(key, out)
+    _cache_set(key, out, ttl=NEWS_TTL)
     return out
 
 
@@ -1315,7 +1317,7 @@ async def _yf_batch_quotes(symbols: list[str]) -> dict[str, dict]:
         orig = yahoo_to_orig.get(ysym, ysym)
         out[orig] = data
 
-    _cache_set("batch_quotes", out)
+    _cache_set("batch_quotes", out, ttl=QUOTE_TTL)
     return out
 
 

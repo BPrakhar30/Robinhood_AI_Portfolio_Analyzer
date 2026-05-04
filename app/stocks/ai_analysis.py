@@ -24,19 +24,18 @@ logger = get_logger("stocks.ai_analysis")
 
 # ── Cache ────────────────────────────────────────────────────────────
 
-_cache: dict[str, tuple[float, Any]] = {}
+from app.utils.cache import BoundedTTLCache
+
+_cache = BoundedTTLCache(maxsize=512, default_ttl=15 * 60)
 _ANALYSIS_TTL = 15 * 60  # 15 minutes
 
 
 def _cache_get(key: str) -> StockAnalysisResponse | None:
-    entry = _cache.get(key)
-    if entry and (time.time() - entry[0]) < _ANALYSIS_TTL:
-        return entry[1]
-    return None
+    return _cache.get(key)
 
 
 def _cache_set(key: str, value: StockAnalysisResponse) -> None:
-    _cache[key] = (time.time(), value)
+    _cache.set(key, value, ttl=_ANALYSIS_TTL)
 
 
 # ── System prompt ────────────────────────────────────────────────────

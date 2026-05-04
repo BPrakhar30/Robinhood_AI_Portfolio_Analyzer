@@ -10,7 +10,7 @@ import json
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from pydantic_ai.exceptions import ModelHTTPError
@@ -20,6 +20,7 @@ from app.auth.service import get_current_user
 from app.database.engine import get_async_session
 from app.database.models import User
 from app.utils.logging import get_logger
+from app.utils.security import limiter
 
 from .models import AssistantAnswer
 from .service import AssistantService
@@ -56,7 +57,9 @@ class StreamRequest(AskRequest):
 
 
 @router.post("/ask", response_model=AssistantAnswer)
+@limiter.limit("20/minute")
 async def ask_assistant(
+    request: Request,
     payload: AskRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -95,7 +98,9 @@ def _sse(event: str, data: dict) -> str:
 
 
 @router.post("/stream")
+@limiter.limit("20/minute")
 async def stream_assistant(
+    request: Request,
     payload: StreamRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),

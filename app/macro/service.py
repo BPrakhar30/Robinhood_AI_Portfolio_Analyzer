@@ -32,22 +32,21 @@ logger = get_logger("macro.service")
 
 # ── Caches ────────────────────────────────────────────────────────────
 
-_indicator_cache: dict[str, tuple[float, Any]] = {}
+from app.utils.cache import BoundedTTLCache
+
+_indicator_cache = BoundedTTLCache(maxsize=128, default_ttl=5 * 60)
 _INDICATOR_TTL = 5 * 60  # 5 minutes — macro tickers move slowly
 
-_exposure_cache: dict[str, tuple[float, Any]] = {}
+_exposure_cache = BoundedTTLCache(maxsize=256, default_ttl=15 * 60)
 _EXPOSURE_TTL = 15 * 60  # 15 minutes per user
 
 
-def _cache_get(cache: dict, key: str, ttl: int) -> Any | None:
-    entry = cache.get(key)
-    if entry and (time.time() - entry[0]) < ttl:
-        return entry[1]
-    return None
+def _cache_get(cache: BoundedTTLCache, key: str, ttl: int = 0) -> Any | None:
+    return cache.get(key)
 
 
-def _cache_set(cache: dict, key: str, value: Any) -> None:
-    cache[key] = (time.time(), value)
+def _cache_set(cache: BoundedTTLCache, key: str, value: Any, ttl: int | None = None) -> None:
+    cache.set(key, value, ttl=ttl)
 
 
 # ── Indicator definitions ─────────────────────────────────────────────
@@ -269,7 +268,7 @@ async def fetch_macro_indicators() -> list[dict]:
         return cached
 
     data = await asyncio.to_thread(_fetch_indicators_sync)
-    _cache_set(_indicator_cache, "macro_indicators", data)
+    _cache_set(_indicator_cache, "macro_indicators", data, ttl=_INDICATOR_TTL)
     return data
 
 

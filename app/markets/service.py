@@ -38,7 +38,9 @@ DEVELOPMENTS_COUNT = 15
 # from dominating the top 10.
 MAX_PER_SOURCE = 2
 
-_cache: dict[str, tuple[float, object]] = {}
+from app.utils.cache import BoundedTTLCache
+
+_cache = BoundedTTLCache(maxsize=256, default_ttl=600)
 NEWS_TTL = 300  # 5 min
 RSS_TTL = 600  # 10 min
 
@@ -139,15 +141,12 @@ def _derive_site_url(article_url: str) -> str | None:
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
-def _cache_get(key: str, ttl: int):
-    entry = _cache.get(key)
-    if entry and (time.time() - entry[0]) < ttl:
-        return entry[1]
-    return None
+def _cache_get(key: str, ttl: int = 0):
+    return _cache.get(key)
 
 
-def _cache_set(key: str, value: object):
-    _cache[key] = (time.time(), value)
+def _cache_set(key: str, value: object, ttl: int | None = None):
+    _cache.set(key, value, ttl=ttl)
 
 
 def _time_ago(dt_str: str) -> str:
@@ -261,7 +260,7 @@ async def _fetch_all_rss() -> list[dict]:
             merged.extend(r)
 
     merged.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
-    _cache_set("rss_all", merged)
+    _cache_set("rss_all", merged, ttl=RSS_TTL)
     return merged
 
 
@@ -399,7 +398,7 @@ async def fetch_market_news() -> dict:
         "sources": sources,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    _cache_set("market_news", result)
+    _cache_set("market_news", result, ttl=NEWS_TTL)
     return result
 
 

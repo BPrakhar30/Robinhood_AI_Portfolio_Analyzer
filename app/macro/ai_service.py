@@ -25,7 +25,9 @@ def _sanitise(text: str) -> str:
 
 # Successful results cached for 15 minutes; failed results cached for 3 minutes
 # to prevent hammering a transiently overloaded model.
-_cache: dict[str, tuple[float, str | None]] = {}
+from app.utils.cache import BoundedTTLCache
+
+_cache = BoundedTTLCache(maxsize=256, default_ttl=15 * 60)
 _SUMMARY_TTL = 15 * 60
 _FAILURE_TTL = 3 * 60
 
@@ -113,6 +115,9 @@ async def _run_llm_with_retry(
     return None
 
 
+_SENTINEL_NONE = "__NONE__"
+
+
 async def generate_macro_summary(
     indicators: list[dict],
     exposure: dict,
@@ -120,20 +125,17 @@ async def generate_macro_summary(
     """Generate a short AI macro briefing for the top of the page."""
     key = _cache_key(indicators, exposure)
     cached = _cache.get(key)
-    if cached:
-        ts, val = cached
-        ttl = _SUMMARY_TTL if val is not None else _FAILURE_TTL
-        if (time.time() - ts) < ttl:
-            return val
+    if cached is not None:
+        return None if cached == _SENTINEL_NONE else cached
 
     try:
         user_prompt = _build_macro_prompt(indicators, exposure)
         summary = await _run_llm_with_retry(MACRO_SUMMARY_PROMPT, user_prompt)
-        _cache[key] = (time.time(), summary)
+        _cache.set(key, summary or _SENTINEL_NONE, ttl=_SUMMARY_TTL)
         return summary
     except Exception as exc:
         logger.error(f"Macro summary generation failed: {exc}")
-        _cache[key] = (time.time(), None)  # short-circuit repeated 503s
+        _cache.set(key, _SENTINEL_NONE, ttl=_FAILURE_TTL)
         return None
 
 
@@ -145,18 +147,15 @@ async def generate_detailed_macro_summary(
     """Generate a comprehensive AI macro summary for the bottom of the page."""
     key = _cache_key(indicators, exposure, suffix=":detailed")
     cached = _cache.get(key)
-    if cached:
-        ts, val = cached
-        ttl = _SUMMARY_TTL if val is not None else _FAILURE_TTL
-        if (time.time() - ts) < ttl:
-            return val
+    if cached is not None:
+        return None if cached == _SENTINEL_NONE else cached
 
     try:
         user_prompt = _build_macro_prompt(indicators, exposure, holdings)
         summary = await _run_llm_with_retry(MACRO_DETAILED_SUMMARY_PROMPT, user_prompt)
-        _cache[key] = (time.time(), summary)
+        _cache.set(key, summary or _SENTINEL_NONE, ttl=_SUMMARY_TTL)
         return summary
     except Exception as exc:
         logger.error(f"Detailed macro summary generation failed: {exc}")
-        _cache[key] = (time.time(), None)
+        _cache.set(key, _SENTINEL_NONE, ttl=_FAILURE_TTL)
         return None

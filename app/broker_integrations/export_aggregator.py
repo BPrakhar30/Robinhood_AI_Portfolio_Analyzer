@@ -757,7 +757,7 @@ def aggregate_export(
     """
     api_key = get_settings().finnhub_api_key.strip()
     if api_key:
-        logger.info(f"Finnhub API key loaded ({api_key[:4]}...{api_key[-4:]})")
+        logger.info("Finnhub API key loaded")
     else:
         logger.warning("FINNHUB_API_KEY is empty — current prices will be zero")
 

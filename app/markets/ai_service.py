@@ -101,8 +101,10 @@ logger = get_logger("markets.ai_service")
 
 # ── Caching ───────────────────────────────────────────────────────────
 
+from app.utils.cache import BoundedTTLCache
+
 _SUMMARY_TTL_SECONDS = 1800  # 30 minutes — long enough to dodge reload storms
-_summary_cache: dict[str, tuple[float, str]] = {}
+_summary_cache = BoundedTTLCache(maxsize=2048, default_ttl=_SUMMARY_TTL_SECONDS)
 
 
 def _hash_url(url: str, title: str) -> str:
@@ -111,14 +113,11 @@ def _hash_url(url: str, title: str) -> str:
 
 
 def _cache_get(key: str) -> Optional[str]:
-    entry = _summary_cache.get(key)
-    if entry and (time.time() - entry[0]) < _SUMMARY_TTL_SECONDS:
-        return entry[1]
-    return None
+    return _summary_cache.get(key)
 
 
 def _cache_set(key: str, value: str) -> None:
-    _summary_cache[key] = (time.time(), value)
+    _summary_cache.set(key, value)
 
 
 # ── Agent construction ───────────────────────────────────────────────

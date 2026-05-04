@@ -292,7 +292,7 @@ class BrokerService:
         return list(result.scalars().all())
 
     async def get_positions(
-        self, user: User, connection_id: Optional[int] = None
+        self, user: User, connection_id: Optional[int] = None, *, limit: int = 500
     ) -> list[Position]:
         """
         Retrieve stored positions for a user, optionally filtered by connection.
@@ -300,10 +300,12 @@ class BrokerService:
         Parameters:
             user: Authenticated User model
             connection_id: Optional filter by broker connection
+            limit: Maximum number of positions to return (server-side cap)
         """
         query = select(Position).where(Position.user_id == user.id)
         if connection_id:
             query = query.where(Position.broker_connection_id == connection_id)
+        query = query.limit(limit)
         result = await self._session.execute(query)
         return list(result.scalars().all())
 

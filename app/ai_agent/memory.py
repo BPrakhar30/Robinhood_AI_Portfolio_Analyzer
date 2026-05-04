@@ -233,7 +233,10 @@ async def _extract_and_save(
                 },
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning(f"Memory update failed for user {user_id}: {exc}")
+            logger.warning(
+                "Memory update failed",
+                extra={"event": "memory_update_failed", "user_id": str(user_id), "error": type(exc).__name__},
+            )
 
 
 def schedule_memory_extraction(

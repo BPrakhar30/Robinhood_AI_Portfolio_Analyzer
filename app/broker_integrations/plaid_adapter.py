@@ -169,16 +169,16 @@ class PlaidAdapter(BrokerInterface):
 
         except plaid.ApiException as e:
             logger.error(
-                f"Plaid authentication error: {e}",
-                extra={"event": "auth_error", "broker": "plaid"},
+                "Plaid authentication error",
+                extra={"event": "auth_error", "broker": "plaid", "error": str(e)},
             )
             raise BrokerAuthenticationError(
-                f"Plaid token exchange failed: {e.body}",
+                "Plaid token exchange failed. Please try again.",
                 details={"broker": "plaid"},
             )
         except Exception as e:
-            logger.error(f"Unexpected Plaid auth error: {e}")
-            raise BrokerAuthenticationError(f"Plaid authentication failed: {e}")
+            logger.error("Unexpected Plaid auth error", extra={"error": str(e)})
+            raise BrokerAuthenticationError("Plaid authentication failed. Please try again.")
 
     def set_access_token(self, access_token: str):
         """Restore a previously stored access token (from encrypted DB storage)."""
@@ -257,13 +257,13 @@ class PlaidAdapter(BrokerInterface):
             )
 
         except plaid.ApiException as e:
-            logger.error(f"Plaid holdings API error: {e}")
-            raise BrokerConnectionError(f"Plaid holdings fetch failed: {e.body}")
+            logger.error("Plaid holdings API error", extra={"error": str(e)})
+            raise BrokerConnectionError("Plaid holdings fetch failed. Please try again.")
         except (BrokerConnectionError,):
             raise
         except Exception as e:
-            logger.error(f"Failed to fetch Plaid holdings: {e}")
-            raise BrokerConnectionError(f"Failed to fetch Plaid holdings: {e}")
+            logger.error("Failed to fetch Plaid holdings", extra={"error": str(e)})
+            raise BrokerConnectionError("Failed to fetch Plaid holdings. Please try again.")
 
         return positions
 
@@ -337,13 +337,13 @@ class PlaidAdapter(BrokerInterface):
             )
 
         except plaid.ApiException as e:
-            logger.error(f"Plaid transactions API error: {e}")
-            raise BrokerConnectionError(f"Plaid transactions fetch failed: {e.body}")
+            logger.error("Plaid transactions API error", extra={"error": str(e)})
+            raise BrokerConnectionError("Plaid transactions fetch failed. Please try again.")
         except (BrokerConnectionError,):
             raise
         except Exception as e:
-            logger.error(f"Failed to fetch Plaid transactions: {e}")
-            raise BrokerConnectionError(f"Failed to fetch Plaid transactions: {e}")
+            logger.error("Failed to fetch Plaid transactions", extra={"error": str(e)})
+            raise BrokerConnectionError("Failed to fetch Plaid transactions. Please try again.")
 
         return transactions
 
@@ -373,13 +373,13 @@ class PlaidAdapter(BrokerInterface):
             return cash_total
 
         except plaid.ApiException as e:
-            logger.error(f"Plaid accounts API error: {e}")
-            raise BrokerConnectionError(f"Plaid cash balance fetch failed: {e.body}")
+            logger.error("Plaid accounts API error", extra={"error": str(e)})
+            raise BrokerConnectionError("Plaid cash balance fetch failed. Please try again.")
         except (BrokerConnectionError,):
             raise
         except Exception as e:
-            logger.error(f"Failed to fetch Plaid cash balance: {e}")
-            raise BrokerConnectionError(f"Failed to fetch Plaid cash balance: {e}")
+            logger.error("Failed to fetch Plaid cash balance", extra={"error": str(e)})
+            raise BrokerConnectionError("Failed to fetch Plaid cash balance. Please try again.")
 
     async def get_account_summary(self) -> AccountSummary:
         """Build account summary from Plaid holdings and accounts data."""

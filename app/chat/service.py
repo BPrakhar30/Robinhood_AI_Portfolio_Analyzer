@@ -93,13 +93,17 @@ async def list_titles_for_user(
     return [t for t in result.scalars().all() if t and t.strip()]
 
 
-async def list_sessions(db: AsyncSession, user_id: UUID) -> list[ChatSessionOut]:
-    """All of a user's sessions, newest-updated first."""
+async def list_sessions(
+    db: AsyncSession, user_id: UUID, *, limit: int = 50, offset: int = 0
+) -> list[ChatSessionOut]:
+    """User's sessions (paginated, newest-updated first)."""
     stmt = (
         select(ChatSession)
         .where(ChatSession.user_id == user_id)
         .options(selectinload(ChatSession.messages))
         .order_by(ChatSession.updated_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     result = await db.execute(stmt)
     sessions = result.scalars().all()

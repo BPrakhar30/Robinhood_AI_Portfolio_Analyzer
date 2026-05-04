@@ -174,9 +174,14 @@ async def get_stock_detail(
     try:
         return await fetch_stock_detail(symbol, position=position)
     except Exception as exc:  # noqa: BLE001 — never leak upstream errors
+        from app.utils.logging import get_logger as _gl
+        _gl("stocks.router").error(
+            "Stock detail fetch failed",
+            extra={"event": "stock_detail_error", "symbol": symbol, "error": str(exc)},
+        )
         raise HTTPException(
             status_code=502,
-            detail=f"Stock data temporarily unavailable: {exc}",
+            detail="Stock data is temporarily unavailable. Please try again shortly.",
         ) from exc
 
 
@@ -197,9 +202,14 @@ async def get_stock_candles(
     try:
         return await fetch_candles(symbol, range)
     except Exception as exc:  # noqa: BLE001
+        from app.utils.logging import get_logger as _gl
+        _gl("stocks.router").error(
+            "Candle fetch failed",
+            extra={"event": "candle_error", "symbol": symbol, "error": str(exc)},
+        )
         raise HTTPException(
             status_code=502,
-            detail=f"Chart data temporarily unavailable: {exc}",
+            detail="Chart data is temporarily unavailable. Please try again shortly.",
         ) from exc
 
 

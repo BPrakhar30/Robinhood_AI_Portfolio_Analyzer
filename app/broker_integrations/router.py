@@ -8,7 +8,7 @@ so broker-layer errors surface with consistent status codes.
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import get_current_user
@@ -38,6 +38,7 @@ from app.database.engine import get_async_session
 from app.database.models import User
 from app.utils.exceptions import AppException
 from app.utils.logging import get_logger
+from app.utils.security import limiter
 
 logger = get_logger("broker_integrations.router")
 
@@ -58,7 +59,9 @@ def _api_response(data=None, error=None, status_val="success"):
 
 
 @router.post("/connect/robinhood", response_model=APIResponse)
+@limiter.limit("5/minute")
 async def connect_robinhood(
+    request: Request,
     payload: RobinhoodConnectRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -83,7 +86,9 @@ async def connect_robinhood(
 
 
 @router.post("/connect/robinhood/initiate", response_model=RobinhoodInitiateResponse)
+@limiter.limit("5/minute")
 async def initiate_robinhood(
+    request: Request,
     payload: RobinhoodInitiateRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -126,7 +131,9 @@ async def initiate_robinhood(
 
 
 @router.post("/connect/robinhood/complete-mfa", response_model=APIResponse)
+@limiter.limit("10/minute")
 async def complete_robinhood_mfa(
+    request: Request,
     payload: RobinhoodMFARequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -160,7 +167,9 @@ async def complete_robinhood_mfa(
 
 
 @router.post("/connect/plaid/link-token", response_model=PlaidLinkTokenResponse)
+@limiter.limit("10/minute")
 async def create_plaid_link_token(
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
     """Generate a Plaid Link token for the frontend to initiate account linking."""
@@ -173,7 +182,9 @@ async def create_plaid_link_token(
 
 
 @router.post("/connect/plaid", response_model=APIResponse)
+@limiter.limit("5/minute")
 async def connect_plaid(
+    request: Request,
     payload: PlaidPublicTokenRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -197,7 +208,9 @@ async def connect_plaid(
 
 
 @router.post("/connect/csv", response_model=APIResponse)
+@limiter.limit("5/minute")
 async def connect_csv(
+    request: Request,
     payload: CSVUploadRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -267,7 +280,9 @@ async def list_connections(
 
 
 @router.post("/connections/{connection_id}/disconnect", response_model=APIResponse)
+@limiter.limit("10/minute")
 async def disconnect_broker(
+    request: Request,
     connection_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -284,7 +299,9 @@ async def disconnect_broker(
 
 
 @router.delete("/connections/{connection_id}", response_model=APIResponse)
+@limiter.limit("10/minute")
 async def delete_connection(
+    request: Request,
     connection_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -299,7 +316,9 @@ async def delete_connection(
 
 
 @router.post("/connections/{connection_id}/sync", response_model=SyncStatusResponse)
+@limiter.limit("20/minute")
 async def sync_connection(
+    request: Request,
     connection_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
@@ -325,12 +344,13 @@ async def sync_connection(
 @router.get("/positions", response_model=list[PositionResponse])
 async def get_positions(
     connection_id: Optional[int] = None,
+    limit: int = Query(200, ge=1, le=500),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get all positions across connected brokers, or filtered by connection."""
     service = BrokerService(session)
-    positions = await service.get_positions(current_user, connection_id)
+    positions = await service.get_positions(current_user, connection_id, limit=limit)
 
     total_value = sum(p.quantity * (p.current_price or 0) for p in positions)
 
@@ -362,7 +382,7 @@ async def get_positions(
 @router.get("/transactions", response_model=list[TransactionResponse])
 async def get_transactions(
     connection_id: Optional[int] = None,
-    limit: int = 100,
+    limit: int = Query(100, ge=1, le=500),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):

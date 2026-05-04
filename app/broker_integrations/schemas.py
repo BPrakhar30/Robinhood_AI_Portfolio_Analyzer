@@ -6,38 +6,38 @@ from pydantic import BaseModel, Field
 
 
 class RobinhoodConnectRequest(BaseModel):
-    username: str
-    password: str
-    mfa_code: Optional[str] = None
-    device_token: Optional[str] = None
+    username: str = Field(..., max_length=255)
+    password: str = Field(..., max_length=255)
+    mfa_code: Optional[str] = Field(None, max_length=20)
+    device_token: Optional[str] = Field(None, max_length=255)
 
 
 class RobinhoodInitiateRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., max_length=255)
+    password: str = Field(..., max_length=255)
 
 
 class RobinhoodMFARequest(BaseModel):
-    mfa_code: str = ""
+    mfa_code: str = Field("", max_length=20)
 
 
 class RobinhoodInitiateResponse(BaseModel):
-    status: str  # "authenticated" | "mfa_required"
-    mfa_type: Optional[str] = None  # "sms" | "app"
+    status: str
+    mfa_type: Optional[str] = None
     data: Optional[dict] = None
 
 
 class PlaidPublicTokenRequest(BaseModel):
-    public_token: str
+    public_token: str = Field(..., max_length=512)
 
 
 class CSVUploadRequest(BaseModel):
-    csv_content: str
+    csv_content: str = Field(..., max_length=5_000_000)
     cash_balance: float = 0.0
-    filename: Optional[str] = "upload.csv"
+    filename: Optional[str] = Field("upload.csv", max_length=255)
     csv_type: str = Field(
         default="positions", pattern="^(positions|transactions)$"
-    )  # strict branch selector
+    )
 
 
 class BrokerConnectionResponse(BaseModel):

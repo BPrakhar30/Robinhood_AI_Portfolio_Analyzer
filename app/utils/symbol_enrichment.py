@@ -18,10 +18,12 @@ from app.utils.logging import get_logger
 
 logger = get_logger("utils.symbol_enrichment")
 
+from app.utils.cache import BoundedTTLCache
+
 FINNHUB_PROFILE_URL = "https://finnhub.io/api/v1/stock/profile2"
 STALE_DAYS = 7
-_MEM_CACHE: dict[str, tuple[float, "SymbolProfile"]] = {}
 _MEM_TTL = 86_400  # 24 h in-memory
+_MEM_CACHE = BoundedTTLCache(maxsize=2048, default_ttl=_MEM_TTL)
 
 
 @dataclass(frozen=True)
@@ -316,26 +318,25 @@ async def get_symbol_profile(
     """
     symbol = symbol.upper().strip()
 
-    now = time.time()
     cached = _MEM_CACHE.get(symbol)
-    if cached and (now - cached[0]) < _MEM_TTL:
-        return cached[1]
+    if cached is not None:
+        return cached
 
     if asset_type == "crypto":
         profile = SymbolProfile("Cryptocurrency", "Digital Asset", "Global", 0, "N/A")
-        _MEM_CACHE[symbol] = (now, profile)
+        _MEM_CACHE.set(symbol, profile)
         return profile
 
     overrides = _build_etf_overrides()
     if symbol in overrides:
         profile = overrides[symbol]
-        _MEM_CACHE[symbol] = (now, profile)
+        _MEM_CACHE.set(symbol, profile)
         return profile
 
     if session is not None:
         db_profile = await _load_from_db(symbol, session)
         if db_profile is not None:
-            _MEM_CACHE[symbol] = (now, db_profile)
+            _MEM_CACHE.set(symbol, db_profile)
             return db_profile
 
     key = api_key or get_settings().finnhub_api_key.strip()
@@ -354,7 +355,7 @@ async def get_symbol_profile(
     else:
         profile = SymbolProfile("Other", "Unknown", "US", 0, "N/A")
 
-    _MEM_CACHE[symbol] = (now, profile)
+    _MEM_CACHE.set(symbol, profile)
 
     if session is not None:
         try:
