@@ -56,6 +56,10 @@ export async function resetPassword(data: {
   return api.post<MessageResponse>("/api/v1/auth/reset-password", data);
 }
 
+export async function logoutUser(): Promise<MessageResponse> {
+  return api.post<MessageResponse>("/api/v1/auth/logout");
+}
+
 export async function deleteAccount(): Promise<MessageResponse> {
   return api.delete<MessageResponse>("/api/v1/auth/account");
 }

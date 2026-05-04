@@ -9,6 +9,21 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { McqBlock, parseMcqBlocks } from "./mcq-block";
 
+function sanitizeLinkHref(href?: string): string {
+  if (!href) return "#";
+  const value = href.trim();
+  // Explicit protocol allow-list prevents javascript:/data: style link injection.
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("mailto:") ||
+    value.startsWith("tel:")
+  ) {
+    return value;
+  }
+  return "#";
+}
+
 const components: Components = {
   p: ({ children, ...props }) => (
     <p className="mb-2 last:mb-0 leading-relaxed" {...props}>
@@ -57,7 +72,7 @@ const components: Components = {
   ),
   a: ({ children, href, ...props }) => (
     <a
-      href={href}
+      href={sanitizeLinkHref(href)}
       target="_blank"
       rel="noreferrer noopener"
       className="text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline"

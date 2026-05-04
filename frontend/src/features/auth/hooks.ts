@@ -14,6 +14,7 @@ import {
   resendVerification,
   forgotPassword,
   resetPassword,
+  logoutUser,
   deleteAccount,
 } from "./api";
 import type { LoginFormData, RegisterFormData } from "./schemas";
@@ -95,9 +96,13 @@ export function useLogout() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  return () => {
+  return async () => {
+    try {
+      await logoutUser();
+    } catch {
+      // Best-effort server-side revocation; clear local state regardless.
+    }
     logout();
-    // Wipe per-user caches immediately so nothing leaks into the next sign-in.
     useChatStore.getState().reset();
     queryClient.clear();
     router.push("/login");
