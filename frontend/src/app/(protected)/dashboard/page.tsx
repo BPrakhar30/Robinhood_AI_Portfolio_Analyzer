@@ -12,14 +12,17 @@ import {
   AlertTriangle,
   ShieldAlert,
   Bell,
+  Gauge,
   Newspaper,
   ThumbsUp,
+  Zap,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { useConnections, usePositions, useSummary } from "@/features/brokers/hooks";
 import { useHealth } from "@/features/system/hooks";
 import { useHealthScore, useRiskAlerts } from "@/features/portfolio-health/hooks";
 import { usePortfolioNews } from "@/features/stocks/hooks";
+import { useMacroAlerts } from "@/features/macro/hooks";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
@@ -48,6 +51,8 @@ export default function DashboardPage() {
   const { data: portfolioNews, isLoading: portfolioNewsLoading } = usePortfolioNews({
     enabled: hasConnections,
   });
+  const { data: macroAlertsData } = useMacroAlerts({ enabled: hasConnections });
+  const macroAlerts = macroAlertsData?.alerts ?? [];
 
   if (isLoading) return <PageSkeleton />;
 
@@ -123,6 +128,51 @@ export default function DashboardPage() {
             icon={DollarSign}
           />
         </div>
+      )}
+
+      {/* Macro Alert banner — threshold-triggered, only shows when active */}
+      {hasConnections && macroAlerts.length > 0 && (
+        <Link href="/macro-pulse" className="group block">
+          <Card className={cn(
+            "border-l-[3px] transition-all hover:shadow-md",
+            macroAlerts.some((a) => a.severity === "critical")
+              ? "border-l-red-500 bg-red-500/5 hover:border-red-500/80"
+              : "border-l-amber-500 bg-amber-500/5 hover:border-amber-500/80",
+          )}>
+            <CardContent className="py-3 px-4 sm:px-5">
+              <div className="flex items-center gap-3">
+                <Zap className={cn(
+                  "h-5 w-5 shrink-0",
+                  macroAlerts.some((a) => a.severity === "critical")
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-amber-600 dark:text-amber-400",
+                )} />
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    "text-sm font-medium",
+                    macroAlerts.some((a) => a.severity === "critical")
+                      ? "text-red-700 dark:text-red-400"
+                      : "text-amber-700 dark:text-amber-400",
+                  )}>
+                    Macro Alert: {macroAlerts[0].title}
+                    {macroAlerts.length > 1 && (
+                      <span className="text-xs font-normal ml-2 opacity-75">
+                        +{macroAlerts.length - 1} more
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    {macroAlerts[0].message}
+                  </p>
+                </div>
+                <div className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400 group-hover:underline">
+                  See Macro Pulse
+                  <ArrowRight className="h-3 w-3" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       )}
 
       {/* Health Score + Risk Alerts + Portfolio News row */}

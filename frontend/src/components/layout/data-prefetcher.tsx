@@ -15,14 +15,15 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchMarketNews } from "@/features/markets/api";
 import { fetchPortfolioNews } from "@/features/stocks/api";
+import { fetchMacroAlerts, fetchMacroPulse } from "@/features/macro/api";
 
 export function DataPrefetcher() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
     // Fire-and-forget — React Query deduplicates concurrent calls so even
-    // if a Markets page component mounts simultaneously the network request
-    // is only issued once.
+    // if a page component mounts simultaneously the network request is only
+    // issued once.
     queryClient.prefetchQuery({
       queryKey: ["markets", "news"],
       queryFn: fetchMarketNews,
@@ -34,9 +35,22 @@ export function DataPrefetcher() {
       queryFn: fetchPortfolioNews,
       staleTime: 5 * 60_000,
     });
+
+    queryClient.prefetchQuery({
+      queryKey: ["macro", "alerts"],
+      queryFn: fetchMacroAlerts,
+      staleTime: 5 * 60_000,
+    });
+
+    // Macro Pulse is the heaviest call (LLM enrichment) — start it immediately
+    // so the page is warm in cache before the user navigates there.
+    queryClient.prefetchQuery({
+      queryKey: ["macro", "pulse"],
+      queryFn: fetchMacroPulse,
+      staleTime: 15 * 60_000,
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // queryClient is stable for the lifetime of the Provider — no need in deps.
 
   return null;
 }

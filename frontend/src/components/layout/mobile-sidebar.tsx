@@ -9,6 +9,7 @@ import {
   PieChart,
   Settings,
   Bot,
+  Gauge,
   Newspaper,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { label: "Transactions", href: "/transactions", icon: ArrowLeftRight },
   { label: "AI Assistant", href: "/assistant", icon: Bot },
   { label: "Markets", href: "/markets", icon: Newspaper },
+  { label: "Macro Pulse", href: "/macro-pulse", icon: Gauge },
   { label: "Summary", href: "/summary", icon: PieChart },
   { label: "Settings", href: "/settings", icon: Settings },
 ];

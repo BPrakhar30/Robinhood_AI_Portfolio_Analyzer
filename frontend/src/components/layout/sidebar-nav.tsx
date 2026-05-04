@@ -21,6 +21,7 @@ import {
   Settings,
   Bot,
   Activity,
+  Gauge,
   FlaskConical,
   Newspaper,
   ChevronLeft,
@@ -42,6 +43,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Settings,
   Bot,
   Activity,
+  Gauge,
   Newspaper,
   FlaskConical,
 };
@@ -54,6 +56,7 @@ const NAV_ITEMS = [
   { label: "Transactions", href: "/transactions", icon: "ArrowLeftRight" },
   { label: "AI Assistant", href: "/assistant", icon: "Bot" },
   { label: "Markets", href: "/markets", icon: "Newspaper" },
+  { label: "Macro Pulse", href: "/macro-pulse", icon: "Gauge" },
   { label: "Summary", href: "/summary", icon: "Activity" },
   { label: "Settings", href: "/settings", icon: "Settings" },
 ];
