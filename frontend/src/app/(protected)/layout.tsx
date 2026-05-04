@@ -4,6 +4,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { AuthGuard } from "@/components/layout/auth-guard";
 import { ChatHydrator } from "@/features/chat/chat-hydrator";
 import { DataPrefetcher } from "@/components/layout/data-prefetcher";
+import { FloatingAssistantWidget } from "@/features/chat/floating-assistant-widget";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     <AuthGuard>
       <ChatHydrator />
       <DataPrefetcher />
+      <FloatingAssistantWidget />
       <div className="flex h-screen overflow-hidden">
         <SidebarNav />
         <div className="flex-1 flex flex-col min-w-0 relative">

@@ -108,26 +108,40 @@ function BrokersContent() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {conn.broker_type !== "csv" && (
+                    {conn.status === "disconnected" ? (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleSync(conn.id)}
-                        disabled={syncMutation.isPending || conn.status === "disconnected"}
+                        className="text-amber-700 dark:text-amber-400 border-amber-500/40 hover:bg-amber-500/10"
+                        onClick={() => setConnectFlow("robinhood")}
                       >
-                        <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
-                        Sync
+                        <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
+                        Reconnect
                       </Button>
+                    ) : (
+                      <>
+                        {conn.broker_type !== "csv" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSync(conn.id)}
+                            disabled={syncMutation.isPending}
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
+                            Sync
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDisconnectId(conn.id)}
+                        >
+                          <Unplug className="h-3.5 w-3.5 mr-1.5" />
+                          Disconnect
+                        </Button>
+                      </>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDisconnectId(conn.id)}
-                    >
-                      <Unplug className="h-3.5 w-3.5 mr-1.5" />
-                      Disconnect
-                    </Button>
                   </div>
                 </div>
               </CardContent>

@@ -128,3 +128,42 @@
     @apply font-sans;
   }
 }
+
+/* Recharts 3.x gives tabIndex to the SVG and inner <g> elements for keyboard
+   accessibility. The global `* { outline-ring/50 }` Tailwind rule + browser
+   default focus styles combine to render a grey/coloured box on mouse click.
+   Suppress outlines on every element inside .recharts-wrapper while keeping
+   them visible for genuine keyboard navigation via :focus-visible. */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface,
+.recharts-surface * {
+  outline: none !important;
+}
+.recharts-wrapper:focus-visible,
+.recharts-wrapper *:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.5) !important;
+}
+
+/* Floating assistant: keep the panel to one message scrollbar, make that
+   scrollbar subtle, and never allow prompt chips/messages to create x-scroll. */
+.assistant-widget-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.assistant-widget-scroll:hover {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
+}
+.assistant-widget-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.assistant-widget-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.assistant-widget-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+.assistant-widget-scroll:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.28);
+}

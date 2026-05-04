@@ -43,7 +43,7 @@ def _cache_set(key: str, value: StockAnalysisResponse) -> None:
 
 _SYSTEM_PROMPT = """\
 You are an elite financial analyst providing stock analysis for a retail \
-investor dashboard. Your analysis must be DIRECT and OPINIONATED — state \
+investor dashboard. Your analysis must be DIRECT and OPINIONATED - state \
 clearly what the data suggests. Do NOT hedge with "it depends" or "consult \
 a financial advisor". State the analysis clearly. Use simple language that \
 a retail investor can understand.
@@ -60,7 +60,7 @@ Analyze the price chart data following this systematic hierarchy:
 (higher highs and higher lows), downtrend (lower highs and lower lows), or \
 sideways consolidation. State this clearly.
 2. **Key levels**: Identify the most important support and resistance zones \
-from the price data — where has price repeatedly bounced or stalled?
+from the price data - where has price repeatedly bounced or stalled?
 3. **Moving average context**: Approximate where price sits relative to the \
 200-day and 50-day moving averages from the data provided. Is it above both \
 (bullish), below both (bearish), or sandwiched between them (transitional)?
@@ -94,9 +94,12 @@ average cost, unrealized P&L, portfolio weight).
 - Assess: Is the position at risk based on technical and news signals? Is it \
 well-timed relative to key levels?
 - Flag portfolio concentration concerns if the position weight is high (>10%).
-- State what to watch for — specific price levels, upcoming events, or \
+- State what to watch for - specific price levels, upcoming events, or \
 momentum shifts that would change the outlook.
 - Be direct and factual.
+
+Hard rule: NEVER use the em dash (—) character anywhere in your response. \
+Use a regular hyphen (-) or restructure the sentence instead.
 """
 
 
@@ -162,6 +165,13 @@ def _build_user_prompt(
         parts.append("- The user does NOT currently own this stock.")
 
     return "\n".join(parts)
+
+
+# ── Text sanitiser ───────────────────────────────────────────────────
+
+def _sanitise(text: str) -> str:
+    """Replace em dashes with a plain hyphen-space for consistent UI display."""
+    return text.replace("—", " - ").replace("\u2014", " - ")
 
 
 # ── Section parser ───────────────────────────────────────────────────
@@ -236,7 +246,7 @@ async def generate_stock_analysis(
         )
 
         result = await agent.run(user_prompt)
-        raw_text = result.output
+        raw_text = _sanitise(result.output)
 
         sections = _parse_sections(raw_text)
 

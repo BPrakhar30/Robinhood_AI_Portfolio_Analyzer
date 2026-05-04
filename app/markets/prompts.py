@@ -32,6 +32,8 @@ Hard rules:
 - If the raw excerpt is thin, infer cautiously from the headline alone and
   produce a real, useful 2-sentence summary using only widely-known context.
 - Do not end with a sentence fragment, dash, ellipsis, or trailing comma.
+- NEVER use the em dash (—) character. Use a regular hyphen (-) or restructure
+  the sentence instead.
 
 Return exactly one summary per input article, in the same order.
 """
@@ -45,6 +47,9 @@ For each raw news item provided, write a punchy 2–3 line sentence summary
 (maximum ~240 characters) that a user can read at a glance. Front-load the
 most market-relevant fact. Keep it neutral and factual. Never use filler
 phrases like "details pending" or "more to come".
+
+NEVER use the em dash (—) character. Use a regular hyphen (-) or restructure
+the sentence instead.
 
 Return exactly one summary per input article, in the same order as provided.
 """
@@ -91,6 +96,8 @@ Hard rules:
 - If the excerpt is too thin, still produce 3 bullets — use widely
   known context about the company to fill bullet 3.
 - Do not include the article's source name.
+- NEVER use the em dash (—) character. Use a regular hyphen (-) or
+  restructure the sentence instead.
 
 Return one bullet block per input article, in the same order.
 """

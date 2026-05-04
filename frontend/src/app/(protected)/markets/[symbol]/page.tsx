@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -9,6 +9,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  useActiveTooltipDataPoints,
 } from "recharts";
 import {
   ArrowLeft,
@@ -92,9 +93,50 @@ function fmtDate(iso: string | null | undefined): string {
 
 const RANGES: CandleRange[] = ["1D", "1W", "1M", "3M", "YTD", "1Y", "5Y", "MAX"];
 
-function PriceChart({ symbol }: { symbol: string }) {
+type ChartHover = { price: number; t: string } | null;
+
+/**
+ * Sits inside the AreaChart component tree to read the active data point
+ * via the Recharts 3.x hook, and forwards it to the parent via callback ref.
+ */
+function HoverBridge({
+  callbackRef,
+}: {
+  callbackRef: React.MutableRefObject<((h: ChartHover) => void) | null>;
+}) {
+  const points = useActiveTooltipDataPoints<{ price: number; t: string }>();
+  const pt = points?.[0] ?? null;
+
+  useEffect(() => {
+    if (pt) {
+      callbackRef.current?.({ price: pt.price, t: pt.t });
+    } else {
+      callbackRef.current?.(null);
+    }
+  }, [pt, callbackRef]);
+
+  return null;
+}
+
+function PriceChart({
+  symbol,
+  onHover,
+}: {
+  symbol: string;
+  onHover?: (h: ChartHover) => void;
+}) {
   const [range, setRange] = useState<CandleRange>("1M");
   const { data, isLoading } = useStockCandles(symbol, range);
+  const [hover, setHover] = useState<ChartHover>(null);
+
+  // Stable ref for the callback so HoverBridge never causes re-renders
+  const hoverRef = useRef<((h: ChartHover) => void) | null>(null);
+  useEffect(() => {
+    hoverRef.current = (h: ChartHover) => {
+      setHover(h);
+      onHover?.(h);
+    };
+  }, [onHover]);
 
   const chartData = useMemo(() => {
     return (data?.points ?? []).map((p) => ({
@@ -130,9 +172,30 @@ function PriceChart({ symbol }: { symbol: string }) {
     }
   };
 
+  const hoverLabel = useMemo(() => {
+    if (!hover) return null;
+    try {
+      const d = new Date(hover.t);
+      if (range === "1D") {
+        return d.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+      }
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return hover.t;
+    }
+  }, [hover, range]);
+
   return (
     <Card>
-      <CardContent className="p-4 space-y-4">
+      <CardContent className="p-4 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -146,7 +209,7 @@ function PriceChart({ symbol }: { symbol: string }) {
             >
               <span>
                 {change != null ? (change >= 0 ? "+" : "") : ""}
-                {change != null ? `$${fmtPrice(Math.abs(change))}` : "—"}
+                {change != null ? `$${fmtPrice(Math.abs(change))}` : "-"}
               </span>
               <span className="text-sm">{fmtPercent(changePct)}</span>
             </div>
@@ -170,6 +233,15 @@ function PriceChart({ symbol }: { symbol: string }) {
           </div>
         </div>
 
+        {/* Hover timestamp chip between range buttons and chart */}
+        <div className="h-5 flex items-center">
+          {hoverLabel && (
+            <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground tabular-nums">
+              {hoverLabel}
+            </span>
+          )}
+        </div>
+
         <div className="h-56 min-w-0 sm:h-64 lg:h-72">
           {isLoading ? (
             <div className="h-full flex items-center justify-center">
@@ -181,7 +253,10 @@ function PriceChart({ symbol }: { symbol: string }) {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <AreaChart
+                data={chartData}
+                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              >
                 <defs>
                   <linearGradient id="gradient-price" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={fill} stopOpacity={0.35} />
@@ -205,14 +280,8 @@ function PriceChart({ symbol }: { symbol: string }) {
                   width={50}
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--background))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  labelFormatter={(v) => new Date(String(v)).toLocaleString("en-US")}
-                  formatter={(v) => [`$${fmtPrice(Number(v))}`, "Price"]}
+                  content={() => null}
+                  cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
                 />
                 <Area
                   type="monotone"
@@ -221,7 +290,14 @@ function PriceChart({ symbol }: { symbol: string }) {
                   strokeWidth={2}
                   fill="url(#gradient-price)"
                   isAnimationActive={false}
+                  activeDot={{
+                    r: 4,
+                    strokeWidth: 2,
+                    stroke: stroke,
+                    fill: "hsl(var(--background))",
+                  }}
                 />
+                <HoverBridge callbackRef={hoverRef} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -575,9 +651,15 @@ function NewsCard({ news, symbol }: { news: StockNewsItem[]; symbol: string }) {
 
 // ── Header ────────────────────────────────────────────────────────
 
-function DetailHeader({ data }: { data: StockDetailResponse }) {
+function DetailHeader({
+  data,
+  hoverPrice,
+}: {
+  data: StockDetailResponse;
+  hoverPrice?: number | null;
+}) {
   const { profile, quote } = data;
-  const price = quote.price;
+  const displayPrice = hoverPrice ?? quote.price;
   const change = quote.change;
   const changePct = quote.change_percent;
   const up = (change ?? 0) > 0;
@@ -615,8 +697,11 @@ function DetailHeader({ data }: { data: StockDetailResponse }) {
         </div>
       </div>
       <div className="text-left md:text-right">
-        <p className="text-2xl font-semibold tabular-nums">
-          {price != null ? `$${fmtPrice(price)}` : "—"}
+        <p className={cn(
+          "text-2xl font-semibold tabular-nums transition-colors duration-150",
+          hoverPrice != null && "text-amber-600 dark:text-amber-400",
+        )}>
+          {displayPrice != null ? `$${fmtPrice(displayPrice)}` : "-"}
         </p>
         <div
           className={cn(
@@ -629,7 +714,7 @@ function DetailHeader({ data }: { data: StockDetailResponse }) {
           {up && <TrendingUp className="h-3.5 w-3.5" />}
           {down && <TrendingDown className="h-3.5 w-3.5" />}
           <span>
-            {change != null ? `${change >= 0 ? "+" : ""}$${fmtPrice(Math.abs(change))}` : "—"}
+            {change != null ? `${change >= 0 ? "+" : ""}$${fmtPrice(Math.abs(change))}` : "-"}
           </span>
           <span>({fmtPercent(changePct)})</span>
         </div>
@@ -844,6 +929,12 @@ export default function StockDetailPage() {
     ? data.profile.asset_type === "crypto" || data.position.asset_type === "crypto"
     : false;
 
+  const [chartHover, setChartHover] = useState<ChartHover>(null);
+
+  const handleChartHover = useCallback((h: ChartHover) => {
+    setChartHover(h);
+  }, []);
+
   if (!symbol) {
     return null;
   }
@@ -877,7 +968,7 @@ export default function StockDetailPage() {
         </Card>
       ) : data ? (
         <>
-          <DetailHeader data={data} />
+          <DetailHeader data={data} hoverPrice={chartHover?.price} />
           <Separator />
 
           <div
@@ -886,7 +977,7 @@ export default function StockDetailPage() {
               data.position.owned && "lg:grid-cols-[2fr_1fr]",
             )}
           >
-            <PriceChart symbol={symbol} />
+            <PriceChart symbol={symbol} onHover={handleChartHover} />
             {data.position.owned && <PositionCard pos={data.position} />}
           </div>
 

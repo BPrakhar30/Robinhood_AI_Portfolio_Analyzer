@@ -39,6 +39,12 @@ from .prompts import (
 
 import re
 
+
+def _sanitise(text: str) -> str:
+    """Replace em dashes with a plain hyphen for consistent UI display."""
+    return text.replace("—", " - ").replace("\u2014", " - ")
+
+
 # Belt-and-suspenders: strip any filler the model still emits despite the
 # prompt forbidding it. Catches "(details pending)", "details pending.",
 # "(more to come)", "story developing", etc. Case-insensitive.
@@ -183,7 +189,7 @@ async def _batch_summarize(
 
     try:
         result = await agent.run(prompt)
-        summaries = result.output
+        summaries = [_sanitise(s) if isinstance(s, str) else s for s in result.output]
     except ModelHTTPError as exc:
         logger.warning(
             f"Markets {kind} summarization rate-limited or upstream error: "
@@ -421,7 +427,7 @@ async def _portfolio_news_raw_summarize(
         )
 
         result = await agent.run(prompt)
-        return result.output
+        return _sanitise(result.output)
     except ModelHTTPError as exc:
         logger.warning(f"Portfolio news summarization rate-limited: status={exc.status_code}")
         return None
