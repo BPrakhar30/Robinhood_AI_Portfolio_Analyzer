@@ -1,70 +1,90 @@
-# Robinhood AI Portfolio Analyzer
+# Robinhood AI Portfolio Copilot
 
-An AI-powered portfolio analysis application that connects to your Robinhood brokerage account, imports your holdings and transaction history, and provides intelligent insights into your investments.
+An AI-powered portfolio analysis platform that connects to brokerage accounts, imports holdings and transaction history, and provides intelligent insights through a conversational assistant, macro-economic analysis, and automated risk detection.
 
 ## What Has Been Built
 
-- **User Authentication** — Registration, login, email verification (6-digit OTP), password reset via emailed token, and JWT-based sessions. Passwords hashed with bcrypt.
-- **Account Deletion** — Users can permanently delete their account and all associated data from Settings or the topbar menu, with confirmation dialog.
-- **Robinhood Direct Connection** — Two-step MFA flow (SMS, email, TOTP, and push notification) using `robin_stocks` internals. Includes 30-second countdown for push approval, auto-trigger, and inline status feedback.
-- **CSV Import** — Upload a standard positions CSV or a Robinhood transaction export. Robinhood exports are auto-detected and run through an aggregation engine that computes positions from buy/sell/split/dividend transactions, with live prices from Finnhub.
-- **Plaid Integration (backend only)** — Backend adapter, endpoints, and service layer are complete. Frontend wiring (Plaid Link widget) is planned for a future release.
-- **Dashboard** — Portfolio overview, connected brokers, positions, unrealized gains, cash balance, plus Health Score and Risk Alert summary widgets.
-- **Broker Management** — Connect, sync, disconnect, or delete broker accounts and data. Encrypted token storage with Fernet.
-- **Portfolio Health Score** — Composite 0–100 score built from five sub-scores (diversification via HHI, single-stock concentration, ETF overlap, volatility exposure via weighted beta, expense efficiency) with per-factor explanations and improvement suggestions.
-- **Allocation Risk Detection** — Sector-overweight detection vs S&P 500, single-stock concentration thresholds (>10% yellow, >20% red), and ETF underlying-holding overlap detection, surfaced on a dedicated Alerts page and as a dashboard widget.
-- **Markets Page** — News tab with collapsible market-summary headlines and a recent-developments carousel, aggregated from Finnhub plus eleven free RSS feeds (CNBC, Reuters, Investing.com, Yahoo Finance, Forbes, FXStreet, FRED Blog, Google News Business, Trading Economics, etc.). Earnings tab with a weekly calendar strip and per-stock detail view.
-- **AI Portfolio Assistant** — Full chat interface with resizable history sidebar, session rename/star/archive, persistent multi-turn context, and streamed responses. Powered by **PydanticAI** on **Google Gemini 2.5 Flash** (free tier), with portfolio data access delegated to a separate **FastMCP** tool server for security isolation.
-- **Observability** — Full-stack tracing via **Pydantic Logfire**: every LLM call (prompt, tokens, cost, latency), every MCP tool call (name, args, result, duration), every SQL query, and every inbound/outbound HTTP request is captured as structured spans. Free tier ships 10M spans/month; leave the token empty to run purely locally.
+- **User Authentication** — Registration, login, email verification (6-digit OTP), password reset, JWT-based sessions with stateless revocation (`token_version`), bcrypt hashing, and account lockout after failed attempts.
+- **Account Deletion** — Users can permanently delete their account and all data from Settings, with confirmation dialog and cascade cleanup.
+- **Robinhood Direct Connection** — Two-step MFA flow (SMS, email, TOTP, push notification) using `robin_stocks`. Includes 30-second countdown, auto-trigger, and inline status feedback.
+- **CSV Import** — Upload positions CSV or Robinhood transaction export. Auto-detects Robinhood format and runs an aggregation engine computing positions from buy/sell/split/dividend transactions with live prices from Finnhub.
+- **Plaid Integration (backend only)** — Adapter, endpoints, and service layer complete. Frontend Plaid Link widget planned for a future release.
+- **Dashboard** — Portfolio overview with connected brokers, positions, unrealized gains, cash balance, Health Score widget, Risk Alert summary, and portfolio news sentiment breakdown (risk/positive/neutral counts with drill-through).
+- **Broker Management** — Connect, sync, disconnect, or delete broker accounts. Encrypted token storage with Fernet.
+- **Portfolio Health Score** — Composite 0-100 score from five sub-scores (diversification via HHI, single-stock concentration, ETF overlap, volatility via weighted beta, expense efficiency) with per-factor explanations and improvement suggestions.
+- **Allocation Risk Detection** — Sector-overweight detection vs S&P 500, single-stock concentration thresholds (>10% yellow, >20% red), ETF overlap detection. Surfaced on Alerts page and dashboard widget.
+- **Markets Page** — News tab with AI-enriched market summary headlines and recent developments. Portfolio News tab with per-holding company news, 3-bullet AI summaries, and sentiment tags (risk/positive/neutral). Sources aggregated from Finnhub plus eleven free RSS feeds (CNBC, Reuters, Yahoo Finance, Forbes, etc.).
+- **Stocks Page** — Browsable grid of S&P 500 + user holdings with live quotes, stock icons, and owned-badge indicators. Stock Detail view with profile, quote, interactive price chart (1D-MAX ranges with hover tooltips), key stats, earnings history, company news, and AI analysis (chart interpretation, news impact, holdings effect).
+- **Macro Pulse Page** — Nine macro indicators (VIX, 10Y Treasury, CPI, S&P 500, Dollar Index, PMI, High-Yield Spreads, Oil, Baltic Dry Index) with live values, health zones, and plain-language definitions. Portfolio macro exposure breakdown across six categories (Growth, Cyclical, Defensive, Rate-Sensitive, Commodity-Linked, International) with holding-level attribution. AI-generated macro summary connecting market conditions to the user's specific holdings.
+- **AI Portfolio Assistant** — Full chat interface with resizable history sidebar, session rename/star/archive, persistent multi-turn context (40-message window), cross-session memory (up to 25 extracted facts), streamed SSE responses, MCQ-based clarification questions, and contextual suggested prompts. Powered by PydanticAI on Google Gemini 2.5 Flash with portfolio data via FastMCP. Includes a research sub-agent for stock screening, fundamentals comparison, and sector analysis.
+- **Floating AI Chat Widget** — Draggable bottom-right chat widget accessible from any page. Page-aware suggested prompts, new-chat button, and expand-to-full-view link.
+- **Observability** — Full-stack tracing via Pydantic Logfire: LLM calls, MCP tool calls, SQL queries, HTTP requests captured as structured spans. Console fallback for local dev.
+- **Security Hardening** — Rate limiting (slowapi), CORS tightening, HTTP security headers (CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy), input validation with max_length constraints, pagination on all list endpoints, bounded TTL caches, PII redaction in logs, timing-safe token comparisons, generic error responses, non-root Docker users.
 - **Settings** — Profile info, system diagnostics, logout, and account deletion (danger zone).
+- **Responsive UI** — Next.js 16, Tailwind CSS, shadcn/ui, dark/light mode, protected routes, sidebar + topbar layout, custom error pages (404/500).
 - **Dockerized Dev Environment** — `docker compose up --build` runs everything with bind mounts for live reloading.
-- **Responsive UI** — Next.js 16, Tailwind CSS, shadcn/ui, dark/light mode, protected routes, sidebar + topbar layout.
 
 ## Tech Stack
 
-- **Backend**: Python, FastAPI, SQLAlchemy (async), Pydantic, JWT, bcrypt, Fernet encryption, Finnhub API, async RSS aggregation
-- **AI / Agent**: PydanticAI, Google Gemini 2.5 Flash (via Google AI Studio free tier, swappable), FastMCP (Streamable-HTTP transport), DuckDuckGo web-search tool
+- **Backend**: Python, FastAPI, SQLAlchemy (async), Pydantic, JWT, bcrypt, Fernet encryption, slowapi (rate limiting), Finnhub API, yfinance, async RSS aggregation
+- **AI / Agent**: PydanticAI, Google Gemini 2.5 Flash (free tier, swappable), FastMCP (Streamable-HTTP transport), DuckDuckGo web search, research sub-agent with stock screener + fundamentals comparison + sector performance tools
 - **Observability**: Pydantic Logfire (OpenTelemetry-compatible) with auto-instrumentation for PydanticAI, FastAPI, SQLAlchemy, and HTTPX
-- **Frontend**: Next.js 16, React, TypeScript, Tailwind CSS, shadcn/ui, Zustand, TanStack Query, Server-Sent Events for streaming
-- **Database**: PostgreSQL 16 (required — `User.id` and related tables use UUID primary keys)
-- **DevOps**: Docker, Docker Compose, concurrently (for multi-process dev)
+- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui, Zustand, TanStack Query, Recharts, react-markdown, Server-Sent Events for streaming
+- **Database**: PostgreSQL 16 (UUID primary keys, JSONB, indexed foreign keys)
+- **DevOps**: Docker, Docker Compose, concurrently (multi-process dev), non-root containers
 
 ## AI Backend Architecture
 
-- **LLM Provider** — Google Gemini via Google AI Studio's direct free tier (10 RPM / 250K TPM / 250 RPD on `gemini-2.5-flash`, no billing required). Set `GOOGLE_API_KEY` (free at https://aistudio.google.com/apikey) and optionally `GOOGLE_MODEL`. The agent is provider-agnostic through PydanticAI — swapping to Anthropic/OpenAI/OpenRouter is a ~5-line change.
-- **Agent Framework** — PydanticAI. Typed, schema-first agents with built-in tool calling, streaming, and message-history replay for multi-turn chat.
-- **Tool Protocol** — MCP (Model Context Protocol). Portfolio tools live in a separate FastMCP process (`app/mcp_server`) and are consumed by the agent over Streamable HTTP. Clean process-level isolation between LLM orchestration and data access.
-- **Available Tools (5)** — The LLM sees only this fixed toolset; it cannot write SQL or reach the DB directly.
+- **LLM Provider** — Google Gemini via Google AI Studio free tier (10 RPM / 250K TPM / 250 RPD on `gemini-2.5-flash`, no billing required). Set `GOOGLE_API_KEY` and optionally `GOOGLE_MODEL`. Provider-agnostic through PydanticAI.
+- **Agent Framework** — PydanticAI. Typed, schema-first agents with built-in tool calling, streaming, and message-history replay.
+- **Tool Protocol** — MCP (Model Context Protocol). Portfolio tools live in a separate FastMCP process and are consumed over Streamable HTTP for process-level isolation.
+- **Portfolio Tools (10)** — The LLM sees only this fixed toolset; it cannot write SQL or reach the DB directly.
   - `get_holdings(limit)` — current positions ordered by market value.
   - `get_recent_transactions(limit)` — latest trades, dividends, fees.
-  - `get_cash_position()` — latest cash balance from the newest snapshot.
-  - `get_performance_summary(period)` — portfolio value change over 1W / 1M / 3M / 6M / 1Y / ALL.
-  - `duckduckgo_search(query)` — general web search for news, macro data, and concepts (not account data).
-- **Tool Routing** — Handled by the LLM itself via OpenAI-style function calling on the tool schemas PydanticAI emits. No custom router, no text-to-SQL. The system prompt forbids using web search for account data.
-- **User-Scoping** — `user_id` is injected server-side as MCP request metadata via a `process_tool_call` hook. The LLM never sees, argues for, or can forge it.
-- **Read-Only by Design** — No write tools exposed: the agent cannot place trades, move money, or mutate account state. Queries are hand-written SQLAlchemy scoped by `user_id`.
-- **Chat Persistence** — `ChatSession.agent_history` stores the serialized PydanticAI `ModelMessage` list per session. On each turn, the last 40 messages are replayed via `run_stream(message_history=…)` so context, tool results, and prior reasoning carry forward.
-- **Streaming** — Backend streams tokens to the frontend as Server-Sent Events (`delta` / `done` / `error`). The user's message is persisted before the stream opens so aborted streams still show the question.
-- **Lazy Construction** — The agent is built at first use and memoized. A missing `GOOGLE_API_KEY` does not crash non-AI endpoints; it only 503s the assistant routes.
-- **Transport Security** — FastMCP runs with DNS-rebinding protection and a host allow-list. No ports are exposed publicly from the `mcp-server` container in Docker.
+  - `get_cash_position()` — latest cash balance from newest snapshot.
+  - `get_performance_summary(period)` — portfolio value change over 1W/1M/3M/6M/1Y/ALL.
+  - `get_position_for_symbol(symbol)` — user's position in a single ticker with weight %.
+  - `get_symbol_profile(symbol)` — company/fund profile (sector, industry, description).
+  - `get_symbol_quote(symbol)` — latest price, day change %, volume.
+  - `get_symbol_key_stats(symbol)` — market cap, P/E, EPS, beta, 52-wk range, dividend yield.
+  - `get_symbol_earnings(symbol)` — next earnings event + historical EPS beat/miss.
+  - `get_symbol_candles_summary(symbol, period)` — OHLC summary (not raw bars) for trend analysis.
+- **Research Sub-Agent** — Delegated via `research_and_analyze` tool for deep analysis: S&P 500 stock screener, multi-stock fundamentals comparison, GICS sector performance ranking, and DuckDuckGo web search for qualitative context.
+- **User Memory** — Cross-session persistent memory (up to 25 facts extracted per user). Injected into system prompt for continuity across conversations.
+- **MCQ Clarification** — When questions are too broad, the assistant asks structured multiple-choice questions to clarify preferences.
+- **User-Scoping** — `user_id` injected server-side as MCP metadata via `process_tool_call`. The LLM never sees or forges it.
+- **Read-Only by Design** — No write tools exposed. The agent cannot place trades or mutate account state.
+- **Chat Persistence** — `ChatSession.agent_history` stores serialized PydanticAI messages. Last 40 messages replayed per turn.
+- **Streaming** — SSE (`delta`/`done`/`error` events) with progress stages (thinking, analyzing portfolio, researching, etc.).
+- **Lazy Construction** — Agent built at first use and memoized. Missing `GOOGLE_API_KEY` only 503s assistant routes.
+- **Transport Security** — FastMCP runs with DNS-rebinding protection and host allow-list. No ports exposed from MCP container.
 
 ## Observability (Pydantic Logfire)
 
-Every request, LLM call, tool invocation, and SQL query is automatically traced end-to-end.
+- **What's captured** — PydanticAI agent runs (model, tokens, cost, duration), MCP tool calls, FastAPI requests, HTTPX calls, SQLAlchemy queries. Backend and MCP server appear as two services linked by OTel trace IDs.
+- **Privacy controls** — Default PII scrubber active. Set `LOGFIRE_SCRUB_PROMPTS=true` to redact user questions and LLM prompts.
+- **Console fallback** — `LOGFIRE_CONSOLE=true` prints spans to stdout in dev.
+- **Zero-config mode** — Empty `LOGFIRE_TOKEN` runs Logfire as a local no-op.
+- **Not locked in** — Built on OpenTelemetry. Switch to Honeycomb/Datadog/Grafana Tempo via OTLP exporters.
 
-- **What's captured** — PydanticAI agent runs (model, tokens, cost, duration), MCP tool calls (name, arguments, result, latency), FastAPI requests, outbound HTTPX calls (market data, RSS, broker APIs), SQLAlchemy queries, and system metrics. Backend and MCP server appear as two distinct services in the UI, linked by OTel trace IDs.
-- **Privacy controls** — Default scrubber redacts common PII patterns (card numbers, emails, tokens). Set `LOGFIRE_SCRUB_PROMPTS=true` in `.env` to additionally redact user questions and LLM prompts — useful before sharing traces.
-- **Console fallback** — With `LOGFIRE_CONSOLE=true` (default), spans also print to stdout in dev, so you can debug without leaving your terminal.
-- **Zero-config mode** — If `LOGFIRE_TOKEN` is empty, Logfire runs as a local no-op: no spans are shipped, no account is required, the app works unchanged.
-- **Enabling cloud traces** — Create a free project at https://logfire.pydantic.dev, run `logfire auth` followed by `logfire projects use <name>`, or paste the write token into `LOGFIRE_TOKEN` in `.env`. Restart `npm run dev` to pick it up.
-- **Not locked in** — Logfire is built on OpenTelemetry. If you switch to Honeycomb/Datadog/Grafana Tempo later, the instrumentation keeps working via standard OTLP exporters.
+## Security
+
+- **Rate Limiting** — slowapi with per-endpoint limits (5/min register, 10/min login, 20/min AI queries). Falls back to in-memory storage when Redis is unavailable.
+- **Authentication** — JWT with stateless revocation via `token_version`. bcrypt password hashing. Account lockout after 5 failed attempts (5-min cooldown via bounded TTL cache).
+- **HTTP Headers** — CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy. HTTPS redirect in production.
+- **CORS** — Tightened to explicit methods and headers. Dev origins in debug mode only; single `FRONTEND_URL` in production.
+- **Input Validation** — Pydantic `max_length` on all string fields, `Query` bounds on pagination, bounded caches to prevent memory exhaustion.
+- **Error Sanitization** — Generic error messages to clients. No stack traces, no internal details, no PII in logs.
+- **Encryption** — Fernet for broker tokens at rest. Timing-safe comparisons for OTP and reset tokens.
+- **Production Startup Guard** — Refuses to start outside dev if secrets are defaults, debug is on, or frontend URL is insecure.
+- **Docker** — Non-root `appuser` in both backend and frontend containers. `.dockerignore` excludes `.env` files.
 
 ## Running the App
 
 ### Option 1: Docker (Recommended)
 
 1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-2. Copy `.env.example` to `.env` and configure. At minimum set `GOOGLE_API_KEY` (free key at https://aistudio.google.com/apikey) to enable the AI Assistant. Optionally set `LOGFIRE_TOKEN` for cloud observability.
+2. Copy `.env.example` to `.env` and configure. At minimum set `GOOGLE_API_KEY` (free at https://aistudio.google.com/apikey).
 3. Build and start:
    ```
    docker compose up --build
@@ -75,7 +95,6 @@ Every request, LLM call, tool invocation, and SQL query is automatically traced 
    - Swagger Docs: http://localhost:8000/docs
 5. Source code is bind-mounted — edit files and changes reflect automatically.
 6. Stop: `docker compose down`
-7. Rebuild after dependency changes: `docker compose up --build`
 
 ### Option 2: Local Development
 
@@ -87,13 +106,36 @@ Every request, LLM call, tool invocation, and SQL query is automatically traced 
    ```
    cd frontend && npm install
    ```
-3. Copy `.env.example` to `.env` and configure. Ensure `DATABASE_URL` points to `postgresql+asyncpg://postgres:postgres@localhost:5432/robinhood_ai`, `MCP_SERVER_URL=http://localhost:8765/mcp`, and `GOOGLE_API_KEY` is set. Optional: set `LOGFIRE_TOKEN` to ship traces to the Logfire UI.
-4. Start PostgreSQL (one-time per session) using the project's Docker compose service:
+3. Copy `.env.example` to `.env` and configure. Set `DATABASE_URL`, `MCP_SERVER_URL=http://localhost:8765/mcp`, and `GOOGLE_API_KEY`.
+4. Start PostgreSQL:
    ```
    docker compose up -d postgres
    ```
-5. Start all three services (backend on 8000, MCP tool server on 8765, frontend on 3000):
+5. Start all three services (backend on 8000, MCP on 8765, frontend on 3000):
    ```
    cd frontend && npm run dev
    ```
-   Runs FastAPI, the FastMCP portfolio-tools server, and Next.js concurrently with colored, labeled logs. `Ctrl+C` shuts down all three.
+   Runs FastAPI, FastMCP, and Next.js concurrently with colored logs. `Ctrl+C` stops all.
+
+## Project Structure
+
+```
+app/
+  main.py                    # FastAPI entry, middleware, exception handlers
+  config.py                  # Pydantic Settings from .env
+  auth/                      # Registration, login, email verification, JWT, password reset
+  broker_integrations/       # Robinhood, Plaid, CSV adapters, sync, positions, transactions
+  portfolio_engine/          # Health score computation, risk detection
+  stocks/                    # Stock universe, detail, candles, AI analysis, news
+  markets/                   # Market news (RSS + Finnhub), portfolio news, AI summaries
+  macro/                     # Macro Pulse indicators, exposure scoring, AI summary
+  ai_agent/                  # PydanticAI assistant, research sub-agent, memory, prompts
+  mcp_server/                # FastMCP tool server (read-only portfolio data)
+  chat/                      # Chat sessions CRUD, message persistence
+  database/                  # SQLAlchemy engine, ORM models
+  utils/                     # Logging, security, encryption, caching, observability
+frontend/
+  src/app/                   # Next.js pages (dashboard, markets, stocks, macro-pulse, etc.)
+  src/features/              # Feature modules (auth, ai, stocks, markets, brokers, etc.)
+  src/components/            # Shared UI components (layout, portfolio, visuals, feedback)
+```
