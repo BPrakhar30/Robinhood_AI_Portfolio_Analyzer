@@ -9,7 +9,9 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
 from app.database.engine import init_db
@@ -24,6 +26,11 @@ from app.chat.router import router as chat_router
 from app.utils.exceptions import AppException
 from app.utils.logging import get_logger
 from app.utils.observability import setup_logfire
+from app.utils.security import (
+    limiter,
+    rate_limit_exceeded_handler,
+    SecurityHeadersMiddleware,
+)
 
 logger = get_logger("main")
 settings = get_settings()
@@ -59,18 +66,35 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+app.add_middleware(SecurityHeadersMiddleware)
+if not settings.debug:
+    # Force HTTPS at the app edge in non-development environments.
+    app.add_middleware(HTTPSRedirectMiddleware)
+
 _DEV_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:3001",
 ]
 
+_ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+_ALLOWED_HEADERS = [
+    "Authorization",
+    "Content-Type",
+    "Accept",
+    "Origin",
+    "X-Requested-With",
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_DEV_ORIGINS if settings.debug else [settings.frontend_url],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=_ALLOWED_METHODS,
+    allow_headers=_ALLOWED_HEADERS,
 )
 
 

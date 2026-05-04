@@ -5,6 +5,7 @@ process-wide. Defaults are for local dev; production must override via env.
 """
 
 from pathlib import Path
+from urllib.parse import urlparse
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from functools import lru_cache
@@ -20,10 +21,13 @@ class Environment(str, Enum):
     PRODUCTION = "production"
 
 
+_INSECURE_DEFAULTS = frozenset({"change-me-in-production", "", "secret", "password"})
+
+
 class Settings(BaseSettings):
     app_name: str = "RobinhoodAICopilot"
     app_env: Environment = Environment.DEVELOPMENT
-    debug: bool = True
+    debug: bool = False
     secret_key: str = "change-me-in-production"
 
     # Database (PostgreSQL via docker-compose; override via .env or environment)
@@ -106,4 +110,29 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    if s.app_env != Environment.DEVELOPMENT:
+        errors: list[str] = []
+        if s.secret_key in _INSECURE_DEFAULTS:
+            errors.append("SECRET_KEY is set to an insecure default")
+        if s.jwt_secret_key in _INSECURE_DEFAULTS:
+            errors.append("JWT_SECRET_KEY is set to an insecure default")
+        if not s.encryption_key:
+            errors.append("ENCRYPTION_KEY is not set")
+        if s.debug:
+            errors.append("DEBUG=true must not be used outside development")
+        parsed_frontend = urlparse(s.frontend_url)
+        if s.frontend_url.strip() in {"*", "http://*", "https://*"}:
+            errors.append("FRONTEND_URL must not use wildcard origins")
+        if parsed_frontend.scheme not in {"http", "https"}:
+            errors.append("FRONTEND_URL must be an absolute http(s) URL")
+        elif parsed_frontend.scheme != "https":
+            errors.append("FRONTEND_URL must use https outside development")
+        if errors:
+            raise RuntimeError(
+                "Refusing to start in "
+                + s.app_env.value
+                + " with insecure configuration:\n  - "
+                + "\n  - ".join(errors)
+            )
+    return s

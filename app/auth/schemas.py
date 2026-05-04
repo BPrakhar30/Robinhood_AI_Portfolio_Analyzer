@@ -8,14 +8,13 @@ from pydantic import BaseModel, EmailStr, Field
 
 class UserCreate(BaseModel):
     email: EmailStr
-    # min_length 8 / max 128: strength policy and bounded hashing cost (DoS)
     password: str = Field(..., min_length=8, max_length=128)
-    full_name: Optional[str] = None
+    full_name: Optional[str] = Field(None, max_length=255)
 
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., max_length=128)
 
 
 class UserResponse(BaseModel):

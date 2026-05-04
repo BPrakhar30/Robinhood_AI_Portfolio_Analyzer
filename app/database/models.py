@@ -70,11 +70,14 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
     is_email_verified = Column(Boolean, default=False)
-    # Stores the *hashed* 6-digit OTP from email verification, not the plaintext code.
+    # Stores an HMAC hash of the 6-digit OTP (never plaintext).
     email_verification_token = Column(String(255), nullable=True, index=True)
     email_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
+    # Stores an HMAC hash of the password reset token (never plaintext).
     password_reset_token = Column(String(255), nullable=True, index=True)
     password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
+    # Stateless JWT revocation version. Increment to invalidate all prior tokens.
+    token_version = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -150,7 +153,8 @@ class Position(Base):
         index=True,
     )
     broker_connection_id = Column(
-        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False,
+        index=True,
     )
     symbol = Column(String(20), nullable=False, index=True)
     name = Column(String(255), nullable=True)
@@ -182,7 +186,8 @@ class Transaction(Base):
         index=True,
     )
     broker_connection_id = Column(
-        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False,
+        index=True,
     )
     symbol = Column(String(20), nullable=False, index=True)
     transaction_type = Column(Enum(TransactionType), nullable=False)
@@ -190,7 +195,7 @@ class Transaction(Base):
     price = Column(Float, nullable=False)
     total_amount = Column(Float, nullable=False)
     fees = Column(Float, default=0.0)
-    executed_at = Column(DateTime(timezone=True), nullable=False)
+    executed_at = Column(DateTime(timezone=True), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     user = relationship("User", back_populates="transactions")
@@ -208,7 +213,8 @@ class PortfolioSnapshot(Base):
         index=True,
     )
     broker_connection_id = Column(
-        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("broker_connections.id", ondelete="CASCADE"), nullable=False,
+        index=True,
     )
     total_value = Column(Float, nullable=False)
     cash_balance = Column(Float, default=0.0)
@@ -248,7 +254,7 @@ class ChatSession(Base):
     # Holds the output of ``result.all_messages_json()`` (a list of ModelMessage dicts).
     agent_history = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
-    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, index=True)
 
     user = relationship("User", back_populates="chat_sessions")
     messages = relationship(

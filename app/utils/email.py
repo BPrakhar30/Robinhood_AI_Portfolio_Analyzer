@@ -4,6 +4,7 @@ Dev mode logs the code to the console (SMTP optional). Production needs
 ``smtp_*`` settings; missing host logs a warning and skips send.
 """
 
+import hashlib
 import random
 import string
 from datetime import datetime, timedelta, timezone
@@ -12,6 +13,11 @@ from app.config import get_settings, Environment
 from app.utils.logging import get_logger
 
 logger = get_logger("email")
+
+
+def _redact(email: str) -> str:
+    """SHA-256 prefix so logs are indexable without exposing PII."""
+    return hashlib.sha256(email.lower().encode()).hexdigest()[:16]
 
 CODE_LENGTH = 6
 CODE_EXPIRY_MINUTES = 15
@@ -46,8 +52,8 @@ async def send_verification_email(
     # Non-dev without SMTP: fail soft (log) so signup flow doesn't crash in misconfigured envs.
     if not settings.smtp_host:
         logger.warning(
-            "SMTP not configured — cannot send verification email",
-            extra={"email": email},
+            "SMTP not configured - cannot send verification email",
+            extra={"email_hash": _redact(email)},
         )
         return
 
@@ -101,11 +107,11 @@ async def send_verification_email(
             password=settings.smtp_password or None,
             use_tls=settings.smtp_use_tls,
         )
-        logger.info("Verification email sent", extra={"email": email})
+        logger.info("Verification email sent", extra={"email_hash": _redact(email)})
     except Exception as e:
         logger.error(
-            f"Failed to send verification email: {e}",
-            extra={"email": email},
+            "Failed to send verification email",
+            extra={"email_hash": _redact(email), "error": str(e)},
         )
 
 
@@ -134,8 +140,8 @@ async def send_password_reset_email(
 
     if not settings.smtp_host:
         logger.warning(
-            "SMTP not configured — cannot send password reset email",
-            extra={"email": email},
+            "SMTP not configured - cannot send password reset email",
+            extra={"email_hash": _redact(email)},
         )
         return
 
@@ -187,9 +193,9 @@ async def send_password_reset_email(
             password=settings.smtp_password or None,
             use_tls=settings.smtp_use_tls,
         )
-        logger.info("Password reset email sent", extra={"email": email})
+        logger.info("Password reset email sent", extra={"email_hash": _redact(email)})
     except Exception as e:
         logger.error(
-            f"Failed to send password reset email: {e}",
-            extra={"email": email},
+            "Failed to send password reset email",
+            extra={"email_hash": _redact(email), "error": str(e)},
         )

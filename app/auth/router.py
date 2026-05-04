@@ -3,7 +3,7 @@
 ``/resend-verification`` returns generic responses to prevent email enumeration.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.schemas import (
@@ -21,12 +21,15 @@ from app.auth.schemas import (
 from app.auth.service import AuthService, get_current_user
 from app.database.engine import get_async_session
 from app.database.models import User
+from app.utils.security import limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=RegistrationResponse, status_code=201)
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     payload: UserCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -40,7 +43,9 @@ async def register(
 
 
 @router.post("/verify-email", response_model=MessageResponse)
+@limiter.limit("10/minute")
 async def verify_email(
+    request: Request,
     payload: VerifyEmailRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -51,7 +56,9 @@ async def verify_email(
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
+@limiter.limit("3/minute")
 async def resend_verification(
+    request: Request,
     payload: ResendVerificationRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -61,7 +68,9 @@ async def resend_verification(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     payload: UserLogin,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -71,7 +80,9 @@ async def login(
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
+@limiter.limit("3/minute")
 async def forgot_password(
+    request: Request,
     payload: ForgotPasswordRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -81,7 +92,9 @@ async def forgot_password(
 
 
 @router.post("/reset-password", response_model=MessageResponse)
+@limiter.limit("5/minute")
 async def reset_password(
+    request: Request,
     payload: ResetPasswordRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -90,6 +103,19 @@ async def reset_password(
     return await service.reset_password(
         token=payload.token, new_password=payload.new_password
     )
+
+
+@router.post("/logout", response_model=MessageResponse)
+@limiter.limit("20/minute")
+async def logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Revoke active JWTs for the authenticated user."""
+    service = AuthService(session)
+    await service.revoke_tokens(current_user)
+    return {"message": "Logged out successfully."}
 
 
 @router.get("/me", response_model=UserResponse)

@@ -24,8 +24,8 @@ class TokenEncryptor:
             key = Fernet.generate_key().decode()
         try:
             self._fernet = Fernet(key.encode() if isinstance(key, str) else key)
-        except Exception as e:
-            raise EncryptionError(f"Invalid encryption key: {e}")
+        except Exception:
+            raise EncryptionError("Invalid encryption key format. Must be a valid Fernet key (32 url-safe base64 bytes).")
 
     def encrypt(self, plaintext: str) -> str:
         """
@@ -44,8 +44,8 @@ class TokenEncryptor:
             return ""
         try:
             return self._fernet.encrypt(plaintext.encode()).decode()
-        except Exception as e:
-            raise EncryptionError(f"Encryption failed: {e}")
+        except Exception:
+            raise EncryptionError("Encryption failed")
 
     def decrypt(self, encrypted_text: str) -> str:
         """
@@ -66,8 +66,8 @@ class TokenEncryptor:
             return self._fernet.decrypt(encrypted_text.encode()).decode()
         except InvalidToken:
             raise EncryptionError("Decryption failed: invalid token or wrong key")
-        except Exception as e:
-            raise EncryptionError(f"Decryption failed: {e}")
+        except Exception:
+            raise EncryptionError("Decryption failed")
 
 
 _encryptor: TokenEncryptor | None = None

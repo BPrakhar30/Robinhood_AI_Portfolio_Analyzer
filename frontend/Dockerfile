@@ -10,6 +10,10 @@ RUN npm ci
 
 COPY . .
 
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && chown -R appuser:appgroup /workspace
+USER appuser
+
 EXPOSE 3000
 
 CMD ["npx", "next", "dev", "--port", "3000", "--hostname", "0.0.0.0"]
