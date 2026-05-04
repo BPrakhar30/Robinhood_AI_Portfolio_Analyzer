@@ -5,8 +5,10 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   type KeyboardEvent,
 } from "react";
+import { usePathname } from "next/navigation";
 import {
   Send,
   Mic,
@@ -25,6 +27,7 @@ import {
   Check,
   Pencil,
   RotateCcw,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,33 +41,23 @@ import { ChatSidebar } from "@/features/chat/chat-sidebar";
 import { useChatStore } from "@/features/chat/store";
 import type { ChatMessage } from "@/features/chat/types";
 import { streamAssistant } from "@/features/chat/api";
+import {
+  getChatSuggestions,
+  getInitialAssistantSuggestions,
+} from "@/features/chat/chat-suggestions";
+import { GenerationStageIndicator } from "@/features/chat/generation-stage-indicator";
 import { MarkdownMessage } from "@/features/chat/markdown-message";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-const SUGGESTIONS = [
-  {
-    icon: TrendingUp,
-    label: "Which stock is hurting my returns most?",
-  },
-  {
-    icon: ShieldAlert,
-    label: "Show diversification issues",
-  },
-  {
-    icon: BarChart3,
-    label: "Compare my portfolio vs S&P 500",
-  },
-  {
-    icon: Lightbulb,
-    label: "Explain why my returns lag Nasdaq",
-  },
-];
+const SUGGESTION_ICONS = [TrendingUp, ShieldAlert, BarChart3, Lightbulb];
+const EMPTY_MESSAGES: ChatMessage[] = [];
 
 function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export default function AssistantPage() {
+  const pathname = usePathname();
   const {
     activeSessionId,
     messages,
@@ -94,9 +87,20 @@ export default function AssistantPage() {
   // Track the in-flight stream so a new question / unmount cancels it.
   const abortRef = useRef<AbortController | null>(null);
 
-  const persistedMessages = activeSessionId ? messages[activeSessionId] ?? [] : [];
+  const persistedMessages = activeSessionId
+    ? messages[activeSessionId] ?? EMPTY_MESSAGES
+    : EMPTY_MESSAGES;
   const activeMessages = temporaryMode ? tempMessages : persistedMessages;
   const isWelcome = activeMessages.length === 0;
+  const welcomeSuggestions = useMemo(() => getInitialAssistantSuggestions(4), []);
+  const followUpSuggestions = useMemo(
+    () => getChatSuggestions(pathname, activeMessages, 2),
+    [pathname, activeMessages],
+  );
+  const latestUserQuestion =
+    [...activeMessages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const canShowFollowUps =
+    !isTyping && activeMessages.some((m) => m.role === "assistant" && m.content.trim());
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -465,19 +469,22 @@ export default function AssistantPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {SUGGESTIONS.map((s) => (
+                {welcomeSuggestions.map((label, index) => {
+                  const Icon = SUGGESTION_ICONS[index % SUGGESTION_ICONS.length];
+                  return (
                   <button
-                    key={s.label}
+                    key={label}
                     type="button"
-                    onClick={() => handleSend(s.label)}
+                    onClick={() => handleSend(label)}
                     className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border/60 bg-background text-sm text-left hover:bg-accent/50 hover:border-border transition-colors cursor-pointer group"
                   >
-                    <s.icon className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
+                    <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
                     <span className="text-muted-foreground group-hover:text-foreground transition-colors">
-                      {s.label}
+                      {label}
                     </span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -500,8 +507,36 @@ export default function AssistantPage() {
                     onRegenerate={() => regenerateFromAssistant(index)}
                     canRegenerate={!isTyping && index > 0}
                     canEdit={!isTyping}
+                    stageQuestion={
+                      activeMessages[index - 1]?.role === "user"
+                        ? activeMessages[index - 1].content
+                        : latestUserQuestion
+                    }
+                    onSend={handleSend}
                   />
                 ))}
+
+                {canShowFollowUps && (
+                  <div className="pl-11">
+                    <div className="max-w-[calc(100%-3rem)] space-y-2 sm:max-w-[80%]">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                        Suggested next
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {followUpSuggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => handleSend(suggestion)}
+                            className="rounded-xl border border-border/70 bg-background px-3 py-2 text-left text-xs leading-relaxed text-muted-foreground transition-colors hover:border-amber-500/50 hover:bg-amber-500/5 hover:text-foreground"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div ref={bottomRef} />
               </div>
@@ -537,6 +572,12 @@ export default function AssistantPage() {
                       </Button>
                     </div>
                   </div>
+                </div>
+                <div className="flex items-center justify-center gap-1.5 pt-1.5 pb-0.5">
+                  <Info className="h-3 w-3 text-amber-600/60 dark:text-amber-400/60 shrink-0" />
+                  <p className="text-[10px] text-muted-foreground/60">
+                    AI-generated analysis. Not financial advice.
+                  </p>
                 </div>
               </div>
             </div>
@@ -628,6 +669,8 @@ interface MessageItemProps {
   onRegenerate: () => void;
   canRegenerate: boolean;
   canEdit: boolean;
+  stageQuestion: string;
+  onSend?: (text: string) => void;
 }
 
 function MessageItem({
@@ -642,6 +685,8 @@ function MessageItem({
   onRegenerate,
   canRegenerate,
   canEdit,
+  stageQuestion,
+  onSend,
 }: MessageItemProps) {
   const isUser = msg.role === "user";
   const isAssistant = msg.role === "assistant";
@@ -702,13 +747,9 @@ function MessageItem({
           >
             {isAssistant ? (
               hasContent ? (
-                <MarkdownMessage content={msg.content} />
+                <MarkdownMessage content={msg.content} onSend={onSend} />
               ) : (
-                <div className="flex gap-1 py-1">
-                  <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
-                  <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
-                  <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
-                </div>
+                <GenerationStageIndicator key={stageQuestion} question={stageQuestion} />
               )
             ) : (
               msg.content

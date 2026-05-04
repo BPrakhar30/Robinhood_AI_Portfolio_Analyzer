@@ -1,11 +1,13 @@
 "use client";
 
 /** GitHub-flavored-markdown renderer for assistant messages, styled to match
- *  the chat bubble without pulling in @tailwindcss/typography. */
+ *  the chat bubble without pulling in @tailwindcss/typography.
+ *  Also detects ---mcq--- blocks and renders them as interactive MCQ cards. */
 
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { McqBlock, parseMcqBlocks } from "./mcq-block";
 
 const components: Components = {
   p: ({ children, ...props }) => (
@@ -54,9 +56,6 @@ const components: Components = {
     </em>
   ),
   a: ({ children, href, ...props }) => (
-    // Amber matches the Incognito accent for visual consistency between
-    // persisted and ephemeral chats; stands out cleanly against the muted
-    // assistant bubble background.
     <a
       href={href}
       target="_blank"
@@ -132,12 +131,43 @@ const components: Components = {
   hr: () => <hr className="my-3 border-border/60" />,
 };
 
-export function MarkdownMessage({ content }: { content: string }) {
+interface MarkdownMessageProps {
+  content: string;
+  onSend?: (text: string) => void;
+}
+
+export function MarkdownMessage({ content, onSend }: MarkdownMessageProps) {
+  const { segments, hasMcq } = parseMcqBlocks(content);
+
+  if (!hasMcq) {
+    return (
+      <div className="text-sm">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+          {content}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
   return (
     <div className="text-sm">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {content}
-      </ReactMarkdown>
+      {segments.map((segment, i) => {
+        if (segment.type === "text") {
+          return (
+            <ReactMarkdown key={i} remarkPlugins={[remarkGfm]} components={components}>
+              {segment.content}
+            </ReactMarkdown>
+          );
+        }
+        return (
+          <McqBlock
+            key={i}
+            question={segment.question}
+            options={segment.options}
+            onSelect={(selection) => onSend?.(selection)}
+          />
+        );
+      })}
     </div>
   );
 }
