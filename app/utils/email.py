@@ -105,7 +105,7 @@ async def send_verification_email(
             port=settings.smtp_port,
             username=settings.smtp_user or None,
             password=settings.smtp_password or None,
-            use_tls=settings.smtp_use_tls,
+            start_tls=settings.smtp_use_tls,
         )
         logger.info("Verification email sent", extra={"email_hash": _redact(email)})
     except Exception as e:
@@ -191,7 +191,7 @@ async def send_password_reset_email(
             port=settings.smtp_port,
             username=settings.smtp_user or None,
             password=settings.smtp_password or None,
-            use_tls=settings.smtp_use_tls,
+            start_tls=settings.smtp_use_tls,
         )
         logger.info("Password reset email sent", extra={"email_hash": _redact(email)})
     except Exception as e:
