@@ -65,5 +65,7 @@ export function usePortfolioNews(options: { enabled?: boolean } = {}) {
     enabled: options.enabled ?? true,
     staleTime: 5 * 60_000,
     refetchInterval: 5 * 60_000,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
   });
 }

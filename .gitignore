@@ -61,3 +61,13 @@ docker-compose.override.yml
 
 # Local Testing
 testing/
+
+# Documentation (internal only — not for GitHub)
+docs/
+
+# Scripts that contain secrets or are throwaway test scripts
+scripts/write_prod_env.sh
+scripts/test_*.sh
+scripts/gen_secrets.py
+scripts/generate_features_docx.py
+~$*

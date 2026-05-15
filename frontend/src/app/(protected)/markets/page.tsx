@@ -682,8 +682,12 @@ export default function MarketsPage() {
   }, []);
 
   const { data: newsData, isLoading: newsLoading } = useMarketNews();
-  const { data: portfolioNews, isLoading: portfolioNewsLoading } =
-    usePortfolioNews();
+  const {
+    data: portfolioNews,
+    isLoading: portfolioNewsLoading,
+    isError: portfolioNewsError,
+    refetch: refetchPortfolioNews,
+  } = usePortfolioNews();
 
   const headlines: MarketHeadline[] = newsData?.summary?.headlines ?? [];
   const updatedAt = newsData?.summary?.updated_at;
@@ -783,41 +787,61 @@ export default function MarketsPage() {
                 )}
               </div>
 
+              <Separator />
               {portfolioNewsLoading ? (
-                <>
-                  <Separator />
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <Skeleton className="h-3 w-28" />
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-                    <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                      {Array.from({ length: 3 }).map((_, i) => (
-                        <Card key={i} className="h-[180px]">
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex items-center gap-2">
-                              <Skeleton className="h-5 w-12 rounded-full" />
-                              <Skeleton className="h-3 w-16 ml-auto" />
-                            </div>
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-5/6" />
-                            <Skeleton className="h-3 w-full" />
-                            <Skeleton className="h-3 w-4/6" />
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-24" />
                   </div>
-                </>
+                  <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Card key={i} className="h-[180px]">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-5 w-12 rounded-full" />
+                            <Skeleton className="h-3 w-16 ml-auto" />
+                          </div>
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-5/6" />
+                          <Skeleton className="h-3 w-full" />
+                          <Skeleton className="h-3 w-4/6" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : portfolioNewsError ? (
+                <div className="py-8 text-center space-y-3">
+                  <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                    Portfolio News
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Could not load portfolio news.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchPortfolioNews()}
+                  >
+                    Retry
+                  </Button>
+                </div>
               ) : portfolioNews?.articles?.length ? (
-                <>
-                  <Separator />
-                  <PortfolioNewsGrid
-                    articles={portfolioNews.articles}
-                    updatedAt={portfolioNews.updated_at}
-                  />
-                </>
-              ) : null}
+                <PortfolioNewsGrid
+                  articles={portfolioNews.articles}
+                  updatedAt={portfolioNews.updated_at}
+                />
+              ) : (
+                <div className="py-8 text-center">
+                  <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                    Portfolio News
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    No portfolio news for your holdings right now. Check back later.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </>

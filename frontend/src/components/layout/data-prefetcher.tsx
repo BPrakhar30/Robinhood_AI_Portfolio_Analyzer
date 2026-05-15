@@ -33,7 +33,7 @@ export function DataPrefetcher() {
     queryClient.prefetchQuery({
       queryKey: ["markets", "portfolio-news"],
       queryFn: fetchPortfolioNews,
-      staleTime: 5 * 60_000,
+      staleTime: 30_000,
     });
 
     queryClient.prefetchQuery({
