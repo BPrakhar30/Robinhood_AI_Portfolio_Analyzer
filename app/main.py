@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
@@ -70,9 +69,6 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.add_middleware(SecurityHeadersMiddleware)
-if not settings.debug:
-    # Force HTTPS at the app edge in non-development environments.
-    app.add_middleware(HTTPSRedirectMiddleware)
 
 _DEV_ORIGINS = [
     "http://localhost:3000",

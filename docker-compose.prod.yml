@@ -48,8 +48,8 @@ services:
         condition: service_healthy
       mcp-server:
         condition: service_started
-    # 2 workers for production; no --reload
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    # 2 workers for production; --proxy-headers trusts Caddy's X-Forwarded-* headers
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips=*
 
   mcp-server:
     build:
