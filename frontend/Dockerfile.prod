@@ -1,0 +1,42 @@
+# Frontend: Production build
+# Stage 1 — install deps and build the Next.js app
+# Stage 2 — minimal runner image with only the compiled output
+
+FROM node:20-alpine AS builder
+
+WORKDIR /workspace
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+# NEXT_PUBLIC_* vars must be present at build time (they are inlined into
+# the client bundle by the Next.js compiler).
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+RUN npm run build
+
+# ── Stage 2: runner ────────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /workspace
+
+ENV NODE_ENV=production
+
+# Copy built output and runtime dependencies
+COPY --from=builder /workspace/public ./public
+COPY --from=builder /workspace/.next ./.next
+COPY --from=builder /workspace/node_modules ./node_modules
+COPY --from=builder /workspace/package.json ./package.json
+COPY --from=builder /workspace/next.config.ts ./next.config.ts
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && chown -R appuser:appgroup /workspace
+
+USER appuser
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

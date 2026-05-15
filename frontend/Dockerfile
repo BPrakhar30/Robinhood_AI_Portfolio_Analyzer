@@ -10,9 +10,10 @@ RUN npm ci
 
 COPY . .
 
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
-    && chown -R appuser:appgroup /workspace
-USER appuser
+RUN mkdir -p /workspace/.next /workspace/node_modules \
+    && chown -R node:node /workspace
+
+USER node
 
 EXPOSE 3000
 

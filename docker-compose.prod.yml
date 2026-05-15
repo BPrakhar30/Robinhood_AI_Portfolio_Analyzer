@@ -1,0 +1,110 @@
+# Production Docker Compose
+#
+# Usage:  docker compose -f docker-compose.prod.yml up -d --build
+#
+# Differences from docker-compose.yml (dev):
+#   - No source-code bind mounts (code is baked into the image)
+#   - No hot-reload (uvicorn without --reload, no watchfiles on MCP)
+#   - Postgres port NOT exposed to host (internal Docker network only)
+#   - Backend runs with 2 uvicorn workers
+#   - Frontend runs a production build (next build + next start)
+#   - Caddy handles HTTPS (Let's Encrypt) and reverse-proxies both services
+#   - NEXT_PUBLIC_API_URL baked into the frontend image at build time
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: robinhood-postgres
+    restart: unless-stopped
+    # No ports: — Postgres is reachable only within the Docker network
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: robinhood_ai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: robinhood-backend
+    restart: unless-stopped
+    # No ports: — backend is only reachable through Caddy
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/robinhood_ai
+      - DATABASE_URL_SYNC=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/robinhood_ai
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mcp-server:
+        condition: service_started
+    # 2 workers for production; no --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: robinhood-mcp-server
+    restart: unless-stopped
+    # Internal-only: no ports exposed
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/robinhood_ai
+      - DATABASE_URL_SYNC=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/robinhood_ai
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8765
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # No watchfiles in production — just run directly
+    command: python -m app.mcp_server
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        # Baked into the Next.js client bundle at build time.
+        # Must match the domain Caddy serves (e.g. https://yourdomain.com)
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: robinhood-frontend
+    restart: unless-stopped
+    # No ports: — frontend is only reachable through Caddy
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: robinhood-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN}
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

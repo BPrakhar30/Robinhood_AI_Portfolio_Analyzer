@@ -1,0 +1,33 @@
+# Caddyfile — reverse proxy for production deployment
+#
+# Caddy automatically obtains and renews a free TLS certificate from
+# Let's Encrypt for the domain in the DOMAIN environment variable.
+#
+# Traffic flow:
+#   Browser → Caddy (443 / HTTPS)
+#       /api/*  → backend:8000  (FastAPI)
+#       /*      → frontend:3000 (Next.js)
+#
+# Set DOMAIN in your .env (e.g. DOMAIN=myapp.com).
+# The server must be reachable on port 80 and 443 from the internet
+# for Let's Encrypt HTTP-01 challenge to succeed.
+
+{$DOMAIN} {
+    # API traffic → FastAPI backend
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # Everything else → Next.js frontend
+    handle {
+        reverse_proxy frontend:3000
+    }
+
+    # Compress responses
+    encode gzip
+
+    # Access log (remove in production if noisy)
+    log {
+        output stdout
+    }
+}
