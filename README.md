@@ -81,6 +81,9 @@ An AI-powered portfolio analysis platform that connects to brokerage accounts, i
 
 ## Running the App
 
+For a no-paid-subscription public deployment with AI keys left empty, see
+[`docs/free-public-deploy.md`](docs/free-public-deploy.md).
+
 ### Option 1: Docker (Recommended)
 
 1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/).

@@ -4,23 +4,25 @@
 ``login`` requires an active, email-verified account.
 """
 
+import hashlib
+import hmac
+import secrets
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
-import hmac
-
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import bcrypt
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.config import Environment, get_settings
 from app.database.engine import get_async_session
 from app.database.models import User
-import secrets
+from app.utils.cache import BoundedTTLCache
 
 from app.utils.email import (
     generate_verification_code,
@@ -32,10 +34,6 @@ from app.utils.email import (
 from app.utils.logging import get_logger
 
 logger = get_logger("auth")
-
-
-import hashlib
-import time
 
 
 def _hash_password(password: str) -> str:
@@ -57,6 +55,11 @@ def _hash_secret_token(token: str) -> str:
     return hmac.new(secret, token.encode(), hashlib.sha256).hexdigest()
 
 
+def _email_delivery_available() -> bool:
+    settings = get_settings()
+    return settings.app_env == Environment.DEVELOPMENT or bool(settings.smtp_host)
+
+
 # ---------------------------------------------------------------------------
 # Brute-force protection: bounded in-memory tracker for failed login attempts.
 # After MAX_ATTEMPTS consecutive failures, the account is locked for
@@ -67,8 +70,6 @@ def _hash_secret_token(token: str) -> str:
 _MAX_ATTEMPTS = 5
 _LOCKOUT_SECONDS = 300  # 5 minutes
 _TRACKER_MAXSIZE = 10_000
-
-from app.utils.cache import BoundedTTLCache
 
 _login_tracker: BoundedTTLCache = BoundedTTLCache(
     maxsize=_TRACKER_MAXSIZE, default_ttl=_LOCKOUT_SECONDS
@@ -120,6 +121,20 @@ class AuthService:
     async def register(
         self, email: str, password: str, full_name: Optional[str] = None
     ) -> dict:
+        if (
+            self._settings.app_env != Environment.DEVELOPMENT
+            and not self._settings.enable_public_registration
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Public registration is currently disabled.",
+            )
+        if not _email_delivery_available():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Email delivery is not configured.",
+            )
+
         existing = await self._session.execute(select(User).where(User.email == email))
         existing_user = existing.scalar_one_or_none()
         if existing_user:
@@ -212,6 +227,12 @@ class AuthService:
         return user
 
     async def resend_verification(self, email: str) -> dict:
+        if not _email_delivery_available():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Email delivery is not configured.",
+            )
+
         # Same outward message for missing vs present email to avoid email enumeration.
         result = await self._session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
@@ -311,6 +332,12 @@ class AuthService:
 
         Always returns a generic message to prevent email enumeration.
         """
+        if not _email_delivery_available():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Email delivery is not configured.",
+            )
+
         result = await self._session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
 

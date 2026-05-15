@@ -14,10 +14,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.broker_integrations.base import BrokerInterface, PositionData, TransactionData
+from app.broker_integrations.base import BrokerInterface
 from app.broker_integrations.robinhood_adapter import RobinhoodAdapter
 from app.broker_integrations.plaid_adapter import PlaidAdapter
 from app.broker_integrations.csv_adapter import CSVImportAdapter
+from app.config import get_settings
 from app.database.models import (
     BrokerConnection,
     BrokerType,
@@ -61,9 +62,12 @@ TXN_TYPE_MAP = {
 
 def _get_adapter(broker_type: BrokerType) -> BrokerInterface:
     """Factory method to create the correct adapter based on broker type."""
+    settings = get_settings()
     if broker_type == BrokerType.ROBINHOOD:
         return RobinhoodAdapter()
     elif broker_type == BrokerType.PLAID:
+        if not settings.enable_plaid:
+            raise BrokerConnectionError("Plaid integration is not enabled.")
         return PlaidAdapter()
     elif broker_type == BrokerType.CSV:
         return CSVImportAdapter()
@@ -158,6 +162,8 @@ class BrokerService:
         Returns:
             BrokerConnection model
         """
+        if not get_settings().enable_plaid:
+            raise BrokerConnectionError("Plaid integration is not enabled.")
         adapter = PlaidAdapter()
         auth_result = await adapter.authenticate({"public_token": public_token})
 

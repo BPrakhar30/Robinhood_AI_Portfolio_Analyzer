@@ -37,6 +37,8 @@ import { CurrencyText, formatCurrency } from "@/components/portfolio/currency-te
 import { GainLossDisplay } from "@/components/portfolio/gain-loss-display";
 import { TimestampText } from "@/components/portfolio/timestamp-text";
 
+const ENABLE_PLAID = process.env.NEXT_PUBLIC_ENABLE_PLAID === "true";
+
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { data: connections, isLoading: connLoading, error: connError } = useConnections();
@@ -85,17 +87,21 @@ export default function DashboardPage() {
                 <Link href="/brokers?connect=robinhood" className={buttonVariants()}>
                   Connect Robinhood
                 </Link>
-                <Link href="/brokers?connect=plaid" className={buttonVariants({ variant: "outline" })}>
-                  <Shield className="mr-2 h-4 w-4" />
-                  Connect via Plaid
-                </Link>
+                {ENABLE_PLAID && (
+                  <Link href="/brokers?connect=plaid" className={buttonVariants({ variant: "outline" })}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Connect via Plaid
+                  </Link>
+                )}
                 <Link href="/brokers?connect=csv" className={buttonVariants({ variant: "outline" })}>
                   <Upload className="mr-2 h-4 w-4" />
                   Import CSV
                 </Link>
               </div>
               <p className="text-xs text-muted-foreground mt-4">
-                Choose any method above. Robinhood for direct login, Plaid for automatic account linking, or CSV for manual import.
+                Choose any method above. Robinhood for direct login
+                {ENABLE_PLAID ? ", Plaid for automatic account linking," : ""}
+                {" "}or CSV for manual import.
               </p>
             </div>
           </CardContent>

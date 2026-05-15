@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import get_current_user
+from app.config import get_settings
 from app.broker_integrations.schemas import (
     RobinhoodConnectRequest,
     RobinhoodInitiateRequest,
@@ -41,6 +42,7 @@ from app.utils.logging import get_logger
 from app.utils.security import limiter
 
 logger = get_logger("broker_integrations.router")
+settings = get_settings()
 
 router = APIRouter(prefix="/broker", tags=["Broker Connections"])
 
@@ -173,6 +175,11 @@ async def create_plaid_link_token(
     current_user: User = Depends(get_current_user),
 ):
     """Generate a Plaid Link token for the frontend to initiate account linking."""
+    if not settings.enable_plaid:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plaid integration is not enabled.",
+        )
     try:
         adapter = PlaidAdapter()
         link_token = await adapter.create_link_token(user_id=str(current_user.id))
@@ -190,6 +197,11 @@ async def connect_plaid(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Exchange a Plaid public_token and connect the investment account."""
+    if not settings.enable_plaid:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plaid integration is not enabled.",
+        )
     try:
         service = BrokerService(session)
         connection = await service.connect_plaid(
@@ -417,7 +429,6 @@ async def get_account_summary(
     total_unrealized = sum(p.unrealized_gains or 0 for p in positions)
     total_realized = sum(p.realized_gains or 0 for p in positions)
 
-    connections = await service.get_connections(current_user)
     # Cash balance would be stored in portfolio snapshots — simplified here
     cash_balance = 0.0
 

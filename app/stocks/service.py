@@ -36,6 +36,7 @@ except Exception:  # pragma: no cover — yfinance missing in some envs
     _YF_AVAILABLE = False
 
 from app.config import get_settings
+from app.utils.cache import BoundedTTLCache
 from app.utils.logging import get_logger
 
 from .schemas import (
@@ -59,10 +60,6 @@ from .schemas import (
 logger = get_logger("stocks.service")
 
 FINNHUB_BASE = "https://finnhub.io/api/v1"
-
-# ── In-memory caches ──────────────────────────────────────────────────
-
-from app.utils.cache import BoundedTTLCache
 
 _cache = BoundedTTLCache(maxsize=4096, default_ttl=900)
 
@@ -597,6 +594,8 @@ async def _finnhub_get(
 ) -> Any | None:
     """Thin Finnhub GET with graceful failure + logging."""
     settings = get_settings()
+    if not settings.enable_finnhub:
+        return None
     api_key = settings.finnhub_api_key.strip()
     if not api_key:
         return None
@@ -1226,8 +1225,6 @@ def _yf_batch_download(symbols: list[str]) -> dict[str, dict]:
 
     Returns ``{SYMBOL: {"price": float, "prev_close": float, "change_pct": float}}``.
     """
-    import pandas as pd  # local import — only needed here
-
     if not symbols:
         return {}
     try:

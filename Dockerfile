@@ -13,6 +13,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
+COPY alembic/ ./alembic/
+COPY alembic.ini .
+COPY scripts/ ./scripts/
 COPY .env.example .
 
 RUN groupadd -r appuser && useradd -r -g appuser -d /workspace -s /sbin/nologin appuser \
@@ -21,4 +24,4 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "scripts.start_production"]

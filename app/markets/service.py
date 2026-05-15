@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.config import get_settings
+from app.utils.cache import BoundedTTLCache
 from app.utils.logging import get_logger
 
 logger = get_logger("markets.service")
@@ -37,8 +38,6 @@ DEVELOPMENTS_COUNT = 15
 # to the Market Summary slice. Prevents a single fast-updating feed (e.g. CNBC)
 # from dominating the top 10.
 MAX_PER_SOURCE = 2
-
-from app.utils.cache import BoundedTTLCache
 
 _cache = BoundedTTLCache(maxsize=256, default_ttl=600)
 NEWS_TTL = 300  # 5 min
@@ -405,6 +404,8 @@ async def fetch_market_news() -> dict:
 async def _fetch_finnhub_news() -> list[dict]:
     """Fetch general market news from Finnhub (requires API key)."""
     settings = get_settings()
+    if not settings.enable_finnhub:
+        return []
     api_key = settings.finnhub_api_key.strip()
     if not api_key:
         return []

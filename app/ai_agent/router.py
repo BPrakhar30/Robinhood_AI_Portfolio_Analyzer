@@ -32,12 +32,12 @@ def _upstream_error_message(exc: ModelHTTPError) -> str:
     if code == 429:
         return (
             "The model is currently rate-limited upstream. "
-            "Please retry in a few seconds, or switch OPENROUTER_MODEL in .env to a less busy free model."
+            "Please retry in a few seconds or switch the configured model."
         )
     if code in (401, 403):
-        return "OpenRouter rejected the API key. Please verify OPENROUTER_API_KEY in .env."
+        return "The model provider rejected the API key. Please verify the configured AI key."
     if code == 404:
-        return "The configured OPENROUTER_MODEL was not found on OpenRouter. Please check the model slug in .env."
+        return "The configured model was not found. Please check the model name."
     if 500 <= code < 600:
         return "The model provider is temporarily unavailable. Please try again shortly."
     return "The assistant could not reach the language model. Please try again."
@@ -82,7 +82,7 @@ async def ask_assistant(
         logger.error("Assistant unavailable", extra={"error": str(e)})
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Assistant is not configured. Contact an administrator.",
+            detail="Assistant is not configured. Add an AI API key to enable this feature.",
         )
     except Exception as e:  # noqa: BLE001
         logger.exception("Assistant failed", extra={"error": str(e)})
@@ -133,7 +133,7 @@ async def stream_assistant(
                 "error",
                 {
                     "type": "error",
-                    "message": "Assistant is not configured. Contact an administrator.",
+                    "message": "Assistant is not configured. Add an AI API key to enable this feature.",
                 },
             )
         except Exception as e:  # noqa: BLE001

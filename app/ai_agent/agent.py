@@ -58,7 +58,7 @@ def _build_agent() -> Agent[AssistantDeps, str]:
     if not settings.google_api_key:
         raise RuntimeError(
             "GOOGLE_API_KEY is not configured. Set it in .env to enable the assistant. "
-            "Get a free key at https://aistudio.google.com/apikey"
+            "The rest of the app can run with AI keys empty."
         )
 
     model = GoogleModel(

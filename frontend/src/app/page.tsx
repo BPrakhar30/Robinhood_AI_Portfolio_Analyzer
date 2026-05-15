@@ -17,7 +17,7 @@ const FEATURES = [
     icon: Shield,
     title: "Secure Account Linking",
     description:
-      "Connect your Robinhood account via OAuth, Plaid, or CSV import. Tokens are encrypted at rest — never stored in plaintext.",
+      "Connect your Robinhood account or import CSV data. Tokens are encrypted at rest - never stored in plaintext.",
   },
   {
     icon: BarChart3,

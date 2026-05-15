@@ -6,7 +6,6 @@ days. Crypto and unknown ETFs use hardcoded defaults (no API call).
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -14,11 +13,10 @@ from typing import Optional
 import requests
 
 from app.config import get_settings
+from app.utils.cache import BoundedTTLCache
 from app.utils.logging import get_logger
 
 logger = get_logger("utils.symbol_enrichment")
-
-from app.utils.cache import BoundedTTLCache
 
 FINNHUB_PROFILE_URL = "https://finnhub.io/api/v1/stock/profile2"
 STALE_DAYS = 7
@@ -339,7 +337,8 @@ async def get_symbol_profile(
             _MEM_CACHE.set(symbol, db_profile)
             return db_profile
 
-    key = api_key or get_settings().finnhub_api_key.strip()
+    settings = get_settings()
+    key = api_key or (settings.finnhub_api_key.strip() if settings.enable_finnhub else "")
     data = await _fetch_finnhub_profile(symbol, key)
     if data:
         cap_m = data.get("marketCapitalization", 0) or 0

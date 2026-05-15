@@ -755,7 +755,8 @@ def aggregate_export(
     Parse a Robinhood transaction export CSV and return aggregated positions
     and individual transaction records.
     """
-    api_key = get_settings().finnhub_api_key.strip()
+    settings = get_settings()
+    api_key = settings.finnhub_api_key.strip() if settings.enable_finnhub else ""
     if api_key:
         logger.info("Finnhub API key loaded")
     else:

@@ -16,6 +16,7 @@ import { RobinhoodConnectForm } from "./robinhood-connect";
 import { CSVImportForm } from "./csv-import";
 
 type ConnectFlow = "robinhood" | "plaid" | "csv" | null;
+const ENABLE_PLAID = process.env.NEXT_PUBLIC_ENABLE_PLAID === "true";
 
 export default function BrokersPage() {
   return (
@@ -27,7 +28,8 @@ export default function BrokersPage() {
 
 function BrokersContent() {
   const searchParams = useSearchParams();
-  const initialFlow = searchParams.get("connect") as ConnectFlow;
+  const requestedFlow = searchParams.get("connect") as ConnectFlow;
+  const initialFlow = requestedFlow === "plaid" && !ENABLE_PLAID ? "csv" : requestedFlow;
   const [connectFlow, setConnectFlow] = useState<ConnectFlow>(initialFlow);
   const [disconnectId, setDisconnectId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -166,11 +168,16 @@ function BrokersContent() {
             <div>
               <p className="text-sm font-medium">Multiple import options available</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Robinhood unavailable? Use{" "}
-                <button onClick={() => setConnectFlow("plaid")} className="underline hover:text-foreground cursor-pointer">
-                  Plaid
-                </button>{" "}
-                for automatic account linking, or{" "}
+                Robinhood unavailable?{" "}
+                {ENABLE_PLAID && (
+                  <>
+                    Use{" "}
+                    <button onClick={() => setConnectFlow("plaid")} className="underline hover:text-foreground cursor-pointer">
+                      Plaid
+                    </button>{" "}
+                    for automatic account linking, or{" "}
+                  </>
+                )}
                 <button onClick={() => setConnectFlow("csv")} className="underline hover:text-foreground cursor-pointer">
                   import a CSV
                 </button>{" "}
@@ -289,29 +296,31 @@ function BrokersContent() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={connectFlow === "plaid"} onOpenChange={(o) => !o && setConnectFlow(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Connect via Plaid</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Plaid integration allows automatic linking of your investment accounts.
-              When configured, a secure Plaid Link session will open to connect your broker.
-            </p>
-            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                Plaid requires server-side configuration. Contact your administrator to set up
-                Plaid credentials, or use CSV import as an alternative.
+      {ENABLE_PLAID && (
+        <Dialog open={connectFlow === "plaid"} onOpenChange={(o) => !o && setConnectFlow(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Connect via Plaid</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Plaid integration allows automatic linking of your investment accounts.
+                When configured, a secure Plaid Link session will open to connect your broker.
               </p>
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Plaid requires server-side configuration. Contact your administrator to set up
+                  Plaid credentials, or use CSV import as an alternative.
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => setConnectFlow("csv")}>
+                <Upload className="mr-2 h-4 w-4" />
+                Use CSV import instead
+              </Button>
             </div>
-            <Button variant="outline" className="w-full" onClick={() => setConnectFlow("csv")}>
-              <Upload className="mr-2 h-4 w-4" />
-              Use CSV import instead
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Dialog open={connectFlow === "csv"} onOpenChange={(o) => !o && setConnectFlow(null)}>
         <DialogContent className="sm:max-w-lg min-w-0">

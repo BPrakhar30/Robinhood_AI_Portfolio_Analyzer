@@ -7,7 +7,6 @@ process-wide. Defaults are for local dev; production must override via env.
 from pathlib import Path
 from urllib.parse import urlparse
 from pydantic_settings import BaseSettings
-from pydantic import Field
 from functools import lru_cache
 from enum import Enum
 
@@ -57,11 +56,13 @@ class Settings(BaseSettings):
     plaid_client_id: str = ""
     plaid_secret: str = ""
     plaid_env: str = "sandbox"
+    enable_plaid: bool = False
 
     # Market Data
     polygon_api_key: str = ""
     finnhub_api_key: str = ""
     yahoo_finance_fallback: bool = True
+    enable_finnhub: bool = False
 
     # Email / SMTP
     smtp_host: str = ""
@@ -73,11 +74,13 @@ class Settings(BaseSettings):
 
     # Frontend URL (for email verification links)
     frontend_url: str = "http://localhost:3000"
+    enable_public_registration: bool = False
 
     # Email verification token lifetime (hours)
     email_verification_token_hours: int = 24
 
     # LLM
+    llm_provider: str = "google"
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 
@@ -92,9 +95,14 @@ class Settings(BaseSettings):
     # MCP portfolio tools (Streamable HTTP). Compose default; override for bare-metal.
     mcp_server_url: str = "http://mcp-server:8765/mcp"
 
+    # Public demo seeding. Used by one-shot deployment startup scripts only.
+    seed_demo_user: bool = False
+    demo_user_email: str = ""
+    demo_user_password: str = ""
+    reset_demo_user_password: bool = False
+
     # Observability (Pydantic Logfire)
     # Leave token empty to disable cloud shipping — Logfire becomes a no-op locally.
-    # Get a free token at https://logfire.pydantic.dev (10M spans/month free tier).
     logfire_token: str = ""
     # Also emit spans to the console in dev for quick inspection without the web UI.
     logfire_console: bool = True
@@ -121,6 +129,18 @@ def get_settings() -> Settings:
             errors.append("ENCRYPTION_KEY is not set")
         if s.debug:
             errors.append("DEBUG=true must not be used outside development")
+        if s.enable_public_registration and not s.smtp_host:
+            errors.append(
+                "ENABLE_PUBLIC_REGISTRATION=true requires SMTP_HOST so users can verify email"
+            )
+        if s.enable_plaid and (not s.plaid_client_id or not s.plaid_secret):
+            errors.append("ENABLE_PLAID=true requires PLAID_CLIENT_ID and PLAID_SECRET")
+        if s.enable_finnhub and not s.finnhub_api_key:
+            errors.append("ENABLE_FINNHUB=true requires FINNHUB_API_KEY")
+        if s.seed_demo_user and (not s.demo_user_email or not s.demo_user_password):
+            errors.append(
+                "SEED_DEMO_USER=true requires DEMO_USER_EMAIL and DEMO_USER_PASSWORD"
+            )
         parsed_frontend = urlparse(s.frontend_url)
         if s.frontend_url.strip() in {"*", "http://*", "https://*"}:
             errors.append("FRONTEND_URL must not use wildcard origins")
