@@ -48,9 +48,8 @@ async def lifespan(app: FastAPI):
             "logfire": bool(settings.logfire_token),
         },
     )
-    if settings.app_env.value == "development":
-        await init_db()
-        logger.info("Database tables created (development mode)")
+    await init_db()
+    logger.info("Database tables ensured")
     yield
     logger.info("Application shutting down", extra={"event": "app_shutdown"})
 
