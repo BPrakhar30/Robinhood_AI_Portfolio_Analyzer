@@ -39,7 +39,7 @@ const FEATURES = [
     icon: Globe,
     title: "Macro Pulse",
     description:
-      "Track GDP, inflation, employment, and Fed policy in one view — with AI commentary on what it means for your holdings.",
+      "Track GDP, inflation, employment, and Fed policy in one view - with AI commentary on what it means for your holdings.",
   },
   {
     icon: PieChart,
@@ -51,7 +51,7 @@ const FEATURES = [
     icon: Shield,
     title: "Risk Alerts",
     description:
-      "Automatic detection of concentration risk, sector overweight, and ETF overlap — with severity-ranked alerts.",
+      "Automatic detection of concentration risk, sector overweight, and ETF overlap - with severity-ranked alerts.",
   },
 ];
 
@@ -64,12 +64,12 @@ const WORKFLOW_STEPS = [
   {
     step: "02",
     title: "Get instant insights",
-    description: "Health score, risk alerts, allocation breakdowns, and AI-summarized news — all computed in seconds.",
+    description: "Health score, risk alerts, allocation breakdowns, and AI-summarized news - all computed in seconds.",
   },
   {
     step: "03",
     title: "Ask your copilot",
-    description: "\"Why is my portfolio down?\" \"Am I too concentrated in tech?\" — the AI assistant answers with your real data.",
+    description: "\"Why is my portfolio down?\" \"Am I too concentrated in tech?\" - the AI assistant answers with your real data.",
   },
 ];
 
@@ -118,7 +118,7 @@ export default function LandingPage() {
           </h1>
           <p className="mt-6 text-base sm:text-lg 2xl:text-xl text-muted-foreground max-w-2xl 2xl:max-w-3xl mx-auto leading-relaxed">
             Connect your brokerage. Get a health score, risk alerts, AI-summarized news,
-            and a copilot that answers questions about your actual holdings — not generic tips.
+            and a copilot that answers questions about your actual holdings - not generic tips.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/register" className={buttonVariants({ size: "lg", className: "bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20" })}>
@@ -154,7 +154,7 @@ export default function LandingPage() {
               Everything a retail investor needs
             </h2>
             <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-              Portfolio analytics, risk detection, market intelligence, and an AI assistant — in one place.
+              Portfolio analytics, risk detection, market intelligence, and an AI assistant - in one place.
             </p>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:gap-6">
@@ -222,7 +222,7 @@ export default function LandingPage() {
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
                 The AI assistant has access to your live holdings, market data, and portfolio analytics
-                through secure tool integrations. It doesn&apos;t guess — it queries your real data.
+                through secure tool integrations. It doesn&apos;t guess - it queries your real data.
               </p>
               <ul className="space-y-3">
                 {[
@@ -252,7 +252,7 @@ export default function LandingPage() {
                   </div>
                   <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 space-y-2">
                     <p className="text-sm leading-relaxed">
-                      Your tech exposure is <strong>42.3%</strong> across 8 positions — well above the S&P 500&apos;s ~31% weight.
+                      Your tech exposure is <strong>42.3% </strong> across 8 positions - well above the S&P 500&apos;s ~31% weight.
                       AAPL alone is 14.8% of your portfolio.
                     </p>
                     <p className="text-sm leading-relaxed">
@@ -295,7 +295,7 @@ export default function LandingPage() {
             Stop guessing. Start understanding.
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Join investors who use AI to understand their portfolio — not replace their judgment.
+            Join investors who use AI to understand their portfolio - not replace their judgment.
           </p>
           <Link href="/register" className={buttonVariants({ size: "lg", className: "bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20" })}>
             Get started for free
