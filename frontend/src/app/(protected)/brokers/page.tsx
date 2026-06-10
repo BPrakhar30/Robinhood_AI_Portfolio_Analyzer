@@ -172,7 +172,7 @@ function BrokersContent() {
                 </button>{" "}
                 for automatic account linking, or{" "}
                 <button onClick={() => setConnectFlow("csv")} className="underline hover:text-foreground cursor-pointer">
-                  import a CSV
+                  import a CSV or Excel
                 </button>{" "}
                 file as a fallback. All tokens are encrypted at rest.
               </p>
@@ -307,7 +307,7 @@ function BrokersContent() {
             </div>
             <Button variant="outline" className="w-full" onClick={() => setConnectFlow("csv")}>
               <Upload className="mr-2 h-4 w-4" />
-              Use CSV import instead
+              Use CSV / Excel import instead
             </Button>
           </div>
         </DialogContent>
@@ -316,7 +316,7 @@ function BrokersContent() {
       <Dialog open={connectFlow === "csv"} onOpenChange={(o) => !o && setConnectFlow(null)}>
         <DialogContent className="sm:max-w-lg min-w-0">
           <DialogHeader className="min-w-0">
-            <DialogTitle>Import from CSV</DialogTitle>
+            <DialogTitle>Import from CSV or Excel</DialogTitle>
           </DialogHeader>
           <div className="min-w-0 overflow-x-hidden">
             <CSVImportForm onSuccess={() => setConnectFlow(null)} />

@@ -3,11 +3,13 @@ import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import * as XLSX from "xlsx";
 import { Upload, Download, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 import { useConnectCSV, useCSVTemplate } from "@/features/brokers/hooks";
 
 interface FormData {
@@ -29,6 +31,7 @@ export function CSVImportForm({ onSuccess }: Props) {
   const [csvContent, setCSVContent] = useState("");
   const [fileName, setFileName] = useState("");
   const [fileError, setFileError] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const connectMutation = useConnectCSV();
   const { data: templateData } = useCSVTemplate();
@@ -42,24 +45,67 @@ export function CSVImportForm({ onSuccess }: Props) {
     defaultValues: { cash_balance: 0 },
   });
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processFile = useCallback((file: File) => {
+    const lower = file.name.toLowerCase();
+    const isCSV = lower.endsWith(".csv");
+    const isExcel = lower.endsWith(".xlsx") || lower.endsWith(".xls");
 
-    if (!file.name.endsWith(".csv")) {
-      setFileError("Please upload a .csv file");
+    if (!isCSV && !isExcel) {
+      setFileError("Please upload a .csv, .xlsx, or .xls file");
       return;
     }
     setFileError("");
-
     setFileName(file.name);
+
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      setCSVContent(text);
-    };
-    reader.readAsText(file);
+    if (isCSV) {
+      reader.onload = (event) => {
+        setCSVContent(event.target?.result as string);
+      };
+      reader.readAsText(file);
+    } else {
+      // Excel: convert the first sheet to CSV in the browser so the
+      // backend import contract stays the same.
+      reader.onload = (event) => {
+        try {
+          const data = event.target?.result as ArrayBuffer;
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheetName = workbook.SheetNames[0];
+          if (!sheetName) {
+            setFileError("The Excel file has no sheets");
+            return;
+          }
+          const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+          if (!csv.trim()) {
+            setFileError("The Excel sheet is empty");
+            return;
+          }
+          setCSVContent(csv);
+        } catch {
+          setFileError("Could not read the Excel file. Make sure it isn't corrupted or password-protected.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
   }, []);
+
+  const handleFileUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
 
   const handleDownloadTemplate = () => {
     if (!templateData) return;
@@ -75,7 +121,7 @@ export function CSVImportForm({ onSuccess }: Props) {
 
   const onSubmit = async (data: FormData) => {
     if (!csvContent) {
-      setFileError("Please upload a CSV file first");
+      setFileError("Please upload a CSV or Excel file first");
       return;
     }
 
@@ -115,7 +161,18 @@ export function CSVImportForm({ onSuccess }: Props) {
         <p className="text-sm font-medium">Step 2: Upload your file</p>
         <label
           htmlFor="csv-upload"
-          className="flex flex-col items-center justify-center w-full min-w-0 h-28 px-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors box-border"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+          className={cn(
+            "flex flex-col items-center justify-center w-full min-w-0 h-28 px-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors box-border",
+            isDragOver
+              ? "border-primary bg-primary/5"
+              : "border-border hover:bg-muted/50"
+          )}
         >
           {fileName ? (
             <div className="flex items-center gap-2 w-full min-w-0 max-w-full text-sm">
@@ -128,14 +185,14 @@ export function CSVImportForm({ onSuccess }: Props) {
           ) : (
             <div className="flex flex-col items-center gap-1 text-muted-foreground">
               <Upload className="h-6 w-6" />
-              <p className="text-sm">Click to upload CSV</p>
-              <p className="text-xs">or drag and drop</p>
+              <p className="text-sm">Click to upload CSV or Excel</p>
+              <p className="text-xs">.csv, .xlsx, .xls — or drag and drop</p>
             </div>
           )}
           <input
             id="csv-upload"
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx,.xls"
             className="hidden"
             onChange={handleFileUpload}
           />
