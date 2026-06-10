@@ -47,6 +47,7 @@ import {
 } from "@/features/chat/chat-suggestions";
 import { GenerationStageIndicator } from "@/features/chat/generation-stage-indicator";
 import { MarkdownMessage } from "@/features/chat/markdown-message";
+import { useSpeechToText } from "@/features/chat/use-speech-to-text";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const SUGGESTION_ICONS = [TrendingUp, ShieldAlert, BarChart3, Lightbulb];
@@ -86,6 +87,12 @@ export default function AssistantPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Track the in-flight stream so a new question / unmount cancels it.
   const abortRef = useRef<AbortController | null>(null);
+
+  // Voice-to-text: finalized speech chunks are appended to the input box.
+  const speech = useSpeechToText({
+    onTranscript: (text) =>
+      setInput((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text)),
+  });
 
   const persistedMessages = activeSessionId
     ? messages[activeSessionId] ?? EMPTY_MESSAGES
@@ -238,6 +245,8 @@ export default function AssistantPage() {
   const handleSend = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || isTyping) return;
+
+    if (speech.isListening) speech.stop();
 
     if (temporaryMode) {
       await sendTurn(content, true, null);
@@ -450,22 +459,26 @@ export default function AssistantPage() {
                     className="resize-none pr-24 !min-h-[44px] max-h-32 rounded-xl border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm py-2.5"
                   />
                   <div className="absolute right-2 bottom-1.5 flex items-center gap-1">
-                    <Tooltip>
-                      <TooltipTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer">
-                        <Mic className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>Use voice mode</TooltipContent>
-                    </Tooltip>
+                    <MicButton
+                      isSupported={speech.isSupported}
+                      isListening={speech.isListening}
+                      onToggle={speech.toggle}
+                    />
                     <Button
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => handleSend()}
-                      disabled={!input.trim()}
+                      disabled={!input.trim() || isTyping}
                     >
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
+                <VoiceStatus
+                  isListening={speech.isListening}
+                  interimTranscript={speech.interimTranscript}
+                  error={speech.error}
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -556,12 +569,11 @@ export default function AssistantPage() {
                       className="resize-none pr-24 !min-h-[44px] max-h-32 rounded-xl border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm py-2.5"
                     />
                     <div className="absolute right-2 bottom-1.5 flex items-center gap-1">
-                      <Tooltip>
-                        <TooltipTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer">
-                          <Mic className="h-4 w-4" />
-                        </TooltipTrigger>
-                        <TooltipContent>Use voice mode</TooltipContent>
-                      </Tooltip>
+                      <MicButton
+                        isSupported={speech.isSupported}
+                        isListening={speech.isListening}
+                        onToggle={speech.toggle}
+                      />
                       <Button
                         size="icon"
                         className="h-8 w-8"
@@ -572,6 +584,11 @@ export default function AssistantPage() {
                       </Button>
                     </div>
                   </div>
+                  <VoiceStatus
+                    isListening={speech.isListening}
+                    interimTranscript={speech.interimTranscript}
+                    error={speech.error}
+                  />
                 </div>
                 <div className="flex items-center justify-center gap-1.5 pt-1.5 pb-0.5">
                   <Info className="h-3 w-3 text-amber-600/60 dark:text-amber-400/60 shrink-0" />
@@ -584,6 +601,65 @@ export default function AssistantPage() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── Voice input (speech-to-text) controls ──────────────────────── */
+
+function MicButton({
+  isSupported,
+  isListening,
+  onToggle,
+}: {
+  isSupported: boolean;
+  isListening: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        onClick={onToggle}
+        aria-label={isListening ? "Stop voice input" : "Start voice input"}
+        className={cn(
+          "inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors cursor-pointer",
+          isListening
+            ? "text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 animate-pulse"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent",
+        )}
+      >
+        <Mic className="h-4 w-4" />
+      </TooltipTrigger>
+      <TooltipContent>
+        {!isSupported
+          ? "Voice input isn't supported in this browser"
+          : isListening
+            ? "Stop voice input"
+            : "Type by speaking"}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function VoiceStatus({
+  isListening,
+  interimTranscript,
+  error,
+}: {
+  isListening: boolean;
+  interimTranscript: string;
+  error: string | null;
+}) {
+  if (!isListening && !error) return null;
+  return (
+    <div className="px-4 pb-2 text-xs">
+      {error ? (
+        <span className="text-destructive">{error}</span>
+      ) : (
+        <span className="text-muted-foreground italic">
+          {interimTranscript || "Listening… speak now"}
+        </span>
+      )}
     </div>
   );
 }
