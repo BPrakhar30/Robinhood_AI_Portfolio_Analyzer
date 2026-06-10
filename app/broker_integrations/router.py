@@ -236,7 +236,9 @@ async def connect_csv(
 
 
 @router.get("/csv/template", response_model=CSVTemplateResponse)
-async def get_csv_template():
+async def get_csv_template(
+    current_user: User = Depends(get_current_user),
+):
     """Download a sample CSV template for portfolio import."""
     return CSVTemplateResponse(
         template=CSVImportAdapter.get_sample_template(),
@@ -410,6 +412,9 @@ async def get_account_summary(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get aggregated account summary across all connected brokers."""
+    from sqlalchemy import select
+    from app.database.models import PortfolioSnapshot
+
     service = BrokerService(session)
     positions = await service.get_positions(current_user)
 
@@ -418,8 +423,18 @@ async def get_account_summary(
     total_realized = sum(p.realized_gains or 0 for p in positions)
 
     connections = await service.get_connections(current_user)
-    # Cash balance would be stored in portfolio snapshots — simplified here
+
+    # Cash = sum of the most recent snapshot's cash_balance per connection
     cash_balance = 0.0
+    for conn in connections:
+        result = await session.execute(
+            select(PortfolioSnapshot.cash_balance)
+            .where(PortfolioSnapshot.broker_connection_id == conn.id)
+            .order_by(PortfolioSnapshot.captured_at.desc())
+            .limit(1)
+        )
+        latest_cash = result.scalar_one_or_none()
+        cash_balance += latest_cash or 0.0
 
     return AccountSummaryResponse(
         total_value=total_equity + cash_balance,
@@ -470,6 +485,10 @@ async def get_allocation(
 
     for pos in positions:
         mv = pos.quantity * (pos.current_price or 0)
+        if mv <= 0:
+            # No live price (e.g. CSV/Excel import without current_price):
+            # fall back to cost basis so the holding isn't dropped entirely.
+            mv = pos.quantity * (pos.average_cost or 0)
         if mv <= 0:
             continue
         total_value += mv

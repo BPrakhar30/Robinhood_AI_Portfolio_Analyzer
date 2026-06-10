@@ -21,7 +21,20 @@ class Environment(str, Enum):
     PRODUCTION = "production"
 
 
-_INSECURE_DEFAULTS = frozenset({"change-me-in-production", "", "secret", "password"})
+_INSECURE_DEFAULTS = frozenset(
+    {
+        "change-me-in-production",
+        "",
+        "secret",
+        "password",
+        "your-secret-key-here-change-in-production",
+        "your-jwt-secret-key-change-in-production",
+    }
+)
+
+# Symmetric HMAC algorithms only — prevents downgrade tricks (e.g. "none")
+# from sneaking in via a misconfigured JWT_ALGORITHM env var.
+_ALLOWED_JWT_ALGORITHMS = frozenset({"HS256", "HS384", "HS512"})
 
 
 class Settings(BaseSettings):
@@ -62,6 +75,8 @@ class Settings(BaseSettings):
     polygon_api_key: str = ""
     finnhub_api_key: str = ""
     yahoo_finance_fallback: bool = True
+    # Fetch live quotes for CSV/Excel imports that omit current_price
+    csv_live_price_enrichment: bool = True
 
     # Email / SMTP
     smtp_host: str = ""
@@ -111,6 +126,11 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     s = Settings()
+    if s.jwt_algorithm not in _ALLOWED_JWT_ALGORITHMS:
+        raise RuntimeError(
+            f"JWT_ALGORITHM must be one of {sorted(_ALLOWED_JWT_ALGORITHMS)}, "
+            f"got {s.jwt_algorithm!r}"
+        )
     if s.app_env != Environment.DEVELOPMENT:
         errors: list[str] = []
         if s.secret_key in _INSECURE_DEFAULTS:

@@ -11,6 +11,7 @@ os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5
 os.environ["DATABASE_URL_SYNC"] = "postgresql://postgres:postgres@localhost:5432/robinhood_ai_test"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["ENCRYPTION_KEY"] = ""
+os.environ["CSV_LIVE_PRICE_ENRICHMENT"] = "false"
 
 from app.database.engine import Base, get_async_session
 from app.main import app
