@@ -786,7 +786,15 @@ def aggregate_export(
     # ── Aggregate positions ──
 
     class _Pos:
-        __slots__ = ("symbol", "name", "qty", "cost", "invested", "last_purchased")
+        __slots__ = (
+            "symbol",
+            "name",
+            "qty",
+            "cost",
+            "invested",
+            "realized",
+            "last_purchased",
+        )
 
         def __init__(self, symbol: str):
             self.symbol = symbol
@@ -794,6 +802,7 @@ def aggregate_export(
             self.qty = D0
             self.cost = D0
             self.invested = D0
+            self.realized = D0
             self.last_purchased: Optional[datetime] = None
 
     positions: Dict[str, _Pos] = {}
@@ -862,6 +871,8 @@ def aggregate_export(
                 continue
             sell_qty = min(qty, pos.qty)
             cost_removed = (pos.cost / pos.qty) * sell_qty if pos.qty > D0 else D0
+            proceeds = abs(amount) if amount != D0 else sell_qty * price
+            pos.realized += proceeds - cost_removed
             pos.qty -= sell_qty
             pos.cost -= cost_removed
 
@@ -929,7 +940,10 @@ def aggregate_export(
 
         avg_cost = _quantize(pos.cost / pos.qty, D2)
         quantity = _quantize(pos.qty, D6)
-        invested = _quantize(pos.invested, D2)
+        # Cost basis of shares still held (matches the live Robinhood adapter:
+        # avg_cost * quantity), not cumulative buys — otherwise gain % is
+        # understated after partial sells.
+        invested = _quantize(pos.cost, D2)
 
         current_price = _fetch_price(pos.symbol, api_key) or 0.0
         unrealized = (
@@ -947,7 +961,7 @@ def aggregate_export(
                 average_cost=avg_cost,
                 current_price=current_price,
                 purchase_date=pos.last_purchased,
-                realized_gains=0.0,
+                realized_gains=_quantize(pos.realized, D2),
                 unrealized_gains=unrealized,
                 asset_type=asset_type,
                 total_amount_invested=invested,

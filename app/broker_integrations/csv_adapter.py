@@ -2,8 +2,12 @@
 
 Headers are normalized (trim, lower, spaces → underscores). Unrealized P/L
 is derived from ``current_price`` when ``unrealized_gains`` is absent.
+Rows without ``current_price`` are enriched with live quotes (Finnhub,
+then yfinance) so allocations / gain-loss / market values are correct
+even for minimal uploads.
 """
 
+import asyncio
 import io
 from datetime import datetime, timezone
 from typing import Optional
@@ -19,7 +23,9 @@ from app.broker_integrations.base import (
 from app.broker_integrations.export_aggregator import (
     aggregate_export,
     is_robinhood_export,
+    _fetch_price,
 )
+from app.config import get_settings
 from app.utils.logging import get_logger
 from app.utils.exceptions import CSVParseError, BrokerAuthenticationError
 
@@ -35,6 +41,7 @@ OPTIONAL_POSITION_COLUMNS = {
     "unrealized_gains",
     "asset_type",
     "sector",
+    "total_amount_invested",
 }
 
 REQUIRED_TRANSACTION_COLUMNS = {"symbol", "transaction_type", "quantity", "price"}
@@ -49,6 +56,73 @@ VTI,Vanguard Total Stock Market ETF,20,220.00,235.00,2023-06-15,0,300.00,etf,
 QQQ,Invesco QQQ Trust,8,380.00,445.00,2024-02-01,0,520.00,etf,
 BTC,Bitcoin,0.5,42000.00,68000.00,2024-01-01,0,13000.00,crypto,
 """
+
+
+def _yf_last_price(symbol: str, asset_type: Optional[str] = None) -> Optional[float]:
+    """Blocking: best-effort last price from yfinance (crypto uses BTC-USD form)."""
+    try:
+        import yfinance as yf
+    except Exception:
+        return None
+
+    ysym = symbol.replace(".", "-").upper()
+    if (asset_type or "").lower() == "crypto" and "-" not in ysym:
+        ysym = f"{ysym}-USD"
+
+    try:
+        ticker = yf.Ticker(ysym)
+        price = None
+        fast_info = getattr(ticker, "fast_info", None)
+        if fast_info is not None:
+            try:
+                price = fast_info["lastPrice"]
+            except Exception:
+                price = getattr(fast_info, "last_price", None)
+        if not price:
+            hist = ticker.history(period="5d", interval="1d")
+            if hist is not None and not hist.empty:
+                closes = hist["Close"].dropna()
+                if not closes.empty:
+                    price = float(closes.iloc[-1])
+        if price and float(price) > 0:
+            return round(float(price), 2)
+    except Exception:
+        pass
+    return None
+
+
+def _enrich_live_prices(
+    positions: list[PositionData],
+    unrealized_explicit: list[bool],
+) -> None:
+    """Blocking: fill in missing current prices (Finnhub → yfinance fallback)
+    and recompute unrealized P/L for rows where the user didn't supply it.
+
+    Mutates ``positions`` in place. Failures are non-fatal — positions keep
+    whatever price the upload provided (possibly 0).
+    """
+    missing = [p for p in positions if (p.current_price or 0) <= 0]
+    if missing:
+        api_key = get_settings().finnhub_api_key.strip()
+        for pos in missing:
+            price = None
+            if api_key and (pos.asset_type or "").lower() != "crypto":
+                price = _fetch_price(pos.symbol, api_key)
+            if price is None:
+                price = _yf_last_price(pos.symbol, pos.asset_type)
+            if price:
+                pos.current_price = price
+        fetched = sum(1 for p in missing if (p.current_price or 0) > 0)
+        logger.info(
+            f"Live price enrichment: {fetched}/{len(missing)} missing prices resolved",
+            extra={"event": "csv_price_enrichment", "resolved": fetched},
+        )
+
+    for pos, explicit in zip(positions, unrealized_explicit):
+        if not explicit and (pos.current_price or 0) > 0:
+            pos.unrealized_gains = round(
+                (pos.current_price - pos.average_cost) * pos.quantity, 2
+            )
 
 
 class CSVImportAdapter(BrokerInterface):
@@ -110,11 +184,14 @@ class CSVImportAdapter(BrokerInterface):
 
         logger.info(f"CSV header columns detected: {header_cols}")
 
+        unrealized_explicit: list[bool] = []
+
         if is_robinhood_export(header_cols):
             logger.info(
                 "Detected Robinhood transaction export — running aggregation engine"
             )
             self._positions, self._transactions = aggregate_export(csv_content)
+            unrealized_explicit = [False] * len(self._positions)
         else:
             try:
                 df = pd.read_csv(io.StringIO(csv_content))
@@ -133,7 +210,14 @@ class CSVImportAdapter(BrokerInterface):
             if csv_type == "transactions":
                 self._transactions = self._parse_transactions(df)
             else:
-                self._positions = self._parse_positions(df)
+                self._positions, unrealized_explicit = self._parse_positions(df)
+
+        # Fill in missing prices with live quotes off the event loop so
+        # allocations / gain-loss / market values are correct for minimal uploads.
+        if self._positions and get_settings().csv_live_price_enrichment:
+            await asyncio.to_thread(
+                _enrich_live_prices, self._positions, unrealized_explicit
+            )
 
         self._connected = True
 
@@ -154,7 +238,9 @@ class CSVImportAdapter(BrokerInterface):
             "filename": self._filename,
         }
 
-    def _parse_positions(self, df: pd.DataFrame) -> list[PositionData]:
+    def _parse_positions(
+        self, df: pd.DataFrame
+    ) -> tuple[list[PositionData], list[bool]]:
         """
         Parse a DataFrame into a list of PositionData.
 
@@ -162,7 +248,8 @@ class CSVImportAdapter(BrokerInterface):
             df: DataFrame with at least REQUIRED_POSITION_COLUMNS
 
         Returns:
-            List of validated PositionData
+            Tuple of (validated PositionData list, per-position flags marking
+            whether ``unrealized_gains`` was explicitly provided in the file)
 
         Raises:
             CSVParseError: If required columns are missing or data is invalid
@@ -178,6 +265,7 @@ class CSVImportAdapter(BrokerInterface):
             )
 
         positions = []
+        unrealized_explicit: list[bool] = []
         errors = []
 
         for idx, row in df.iterrows():
@@ -212,10 +300,16 @@ class CSVImportAdapter(BrokerInterface):
                     if pd.notna(row.get("realized_gains"))
                     else 0.0
                 )
+                # Distinguish "column absent / blank" from an explicit 0 so a
+                # user-supplied value is never silently overwritten.
+                has_unrealized = pd.notna(row.get("unrealized_gains"))
                 unrealized = (
-                    float(row.get("unrealized_gains", 0))
-                    if pd.notna(row.get("unrealized_gains"))
-                    else 0.0
+                    float(row.get("unrealized_gains", 0)) if has_unrealized else 0.0
+                )
+                invested = (
+                    float(row.get("total_amount_invested", 0))
+                    if pd.notna(row.get("total_amount_invested"))
+                    else quantity * avg_cost
                 )
                 asset_type = (
                     str(row.get("asset_type", "stock")).strip().lower()
@@ -240,7 +334,7 @@ class CSVImportAdapter(BrokerInterface):
                         pass
 
                 # Infer unrealized when users omit the column but supply mark and cost
-                if unrealized == 0 and current_price > 0:
+                if not has_unrealized and current_price > 0:
                     unrealized = (current_price - avg_cost) * quantity
 
                 positions.append(
@@ -255,8 +349,10 @@ class CSVImportAdapter(BrokerInterface):
                         unrealized_gains=unrealized,
                         asset_type=asset_type,
                         sector=sector if sector else None,
+                        total_amount_invested=invested,
                     )
                 )
+                unrealized_explicit.append(has_unrealized)
 
             except (ValueError, TypeError) as e:
                 errors.append(f"Row {idx + 1}: {e}")
@@ -273,7 +369,7 @@ class CSVImportAdapter(BrokerInterface):
                 "No valid positions found in CSV", details={"errors": errors[:10]}
             )
 
-        return positions
+        return positions, unrealized_explicit
 
     def _parse_transactions(self, df: pd.DataFrame) -> list[TransactionData]:
         """
