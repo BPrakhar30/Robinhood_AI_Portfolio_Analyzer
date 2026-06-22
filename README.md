@@ -1,8 +1,66 @@
 # Robinhood AI Portfolio Copilot
 
-An AI-powered portfolio analysis platform that connects to brokerage accounts, imports holdings and transaction history, and provides intelligent insights through a conversational assistant, macro-economic analysis, and automated risk detection.
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![PydanticAI](https://img.shields.io/badge/PydanticAI-Agent-007ACC)](https://ai.pydantic.dev/)
+[![MCP](https://img.shields.io/badge/MCP-Tools-6366F1)](https://modelcontextprotocol.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## What Has Been Built
+**Production-style AI portfolio copilot** — connect Robinhood (or import CSV/Excel), analyze holdings with macro context, detect allocation risk, and chat with a **PydanticAI agent** backed by **MCP tools** and **Gemini 2.5 Flash**.
+
+> Built as a full-stack reference for agentic fintech: typed tools, read-only MCP isolation, SSE streaming, cross-session memory, and OpenTelemetry via Logfire.
+
+**Quick start:** `cp .env.example .env` → set `GOOGLE_API_KEY` → `docker compose up --build` → open http://localhost:3000
+
+---
+
+## Why this repo
+
+| Capability | What you get |
+|---|---|
+| **Agent architecture** | PydanticAI + FastMCP with 10 read-only portfolio tools and a research sub-agent |
+| **Real brokerage data** | Robinhood MFA login, CSV/Excel import, transaction aggregation |
+| **Portfolio intelligence** | Health score, sector concentration, ETF overlap, macro exposure |
+| **Observability** | Logfire spans for LLM, MCP, SQL, and HTTP — OTel-compatible |
+| **Security baseline** | JWT revocation, rate limits, Fernet encryption, CSP/HSTS headers |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph client [Next.js Frontend]
+    UI[Dashboard / Chat / Macro]
+  end
+
+  subgraph api [FastAPI Backend]
+    Auth[JWT Auth]
+    Engine[Portfolio Engine]
+    Agent[PydanticAI Agent]
+  end
+
+  subgraph mcp [FastMCP Server]
+    Tools[10 Read-Only Tools]
+  end
+
+  subgraph data [Data Layer]
+    PG[(PostgreSQL)]
+    RH[Robinhood / CSV]
+    FH[Finnhub / RSS]
+  end
+
+  UI -->|REST + SSE| api
+  Agent -->|Streamable HTTP| mcp
+  Tools --> PG
+  Engine --> PG
+  api --> RH
+  api --> FH
+  Agent -->|Gemini 2.5 Flash| LLM[Google AI]
+```
+
+---
+
+## Features
 
 - **User Authentication** — Registration, login, email verification (6-digit OTP), password reset, JWT-based sessions with stateless revocation (`token_version`), bcrypt hashing, and account lockout after failed attempts.
 - **Account Deletion** — Users can permanently delete their account and all data from Settings, with confirmation dialog and cascade cleanup.
