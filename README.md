@@ -6,16 +6,21 @@
 [![PydanticAI](https://img.shields.io/badge/PydanticAI-Agent-007ACC)](https://ai.pydantic.dev/)
 [![MCP](https://img.shields.io/badge/MCP-Tools-6366F1)](https://modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-myportfoliocopilot.com-00C805?style=for-the-badge)](https://myportfoliocopilot.com/)
 
 **Production-style AI portfolio copilot** - connect Robinhood (or import CSV/Excel), analyze holdings with macro context, detect allocation risk, and chat with a **PydanticAI agent** backed by **MCP tools** and **Gemini 2.5 Flash**.
 
 > Reference implementation for **PydanticAI + MCP + FastAPI**: typed read-only tools, isolated MCP server, SSE streaming, cross-session memory, and OpenTelemetry via Logfire. Useful if you're building agentic fintech or learning production agent patterns.
 
-**Quick start:** `cp .env.example .env` → set `GOOGLE_API_KEY` → `docker compose up --build` → open http://localhost:3000
+**Try it live:** [myportfoliocopilot.com](https://myportfoliocopilot.com/) — create a free account, connect Robinhood or import CSV, and explore the dashboard, Macro Pulse, and AI assistant.
+
+**Self-host:** `cp .env.example .env` → set `GOOGLE_API_KEY` → `docker compose up --build` → open http://localhost:3000
 
 ---
 
 ## Demo
+
+**Live app:** https://myportfoliocopilot.com/
 
 <!-- Add a 30-60s GIF here after recording (Dashboard → AI chat → Macro Pulse). -->
 <!-- Recommended: record with OBS or Windows Game Bar, convert with ffmpeg or ezgif.com -->
@@ -150,6 +155,8 @@ flowchart LR
 
 ## Running the App
 
+Try the hosted version at **[myportfoliocopilot.com](https://myportfoliocopilot.com/)** (no setup required). To run locally or self-host:
+
 ### Option 1: Docker (Recommended)
 
 1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/).
@@ -208,3 +215,9 @@ frontend/
   src/features/              # Feature modules (auth, ai, stocks, markets, brokers, etc.)
   src/components/            # Shared UI components (layout, portfolio, visuals, feedback)
 ```
+
+## Links
+
+- **Live app:** https://myportfoliocopilot.com/
+- **Source:** this repository
+- **License:** MIT
