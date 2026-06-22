@@ -170,7 +170,7 @@ def _build_user_prompt(
 
 def _sanitise(text: str) -> str:
     """Replace em dashes with a plain hyphen-space for consistent UI display."""
-    return text.replace(" - ", " - ").replace("\u2014", " - ")
+    return text.replace("\u2014", " - ").replace("\u2013", " - ")
 
 
 # ── Section parser ───────────────────────────────────────────────────
