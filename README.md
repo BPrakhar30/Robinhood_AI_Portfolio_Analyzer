@@ -22,31 +22,31 @@
 
 **Live app:** [myportfoliocopilot.com](https://myportfoliocopilot.com/)
 
-Short walkthroughs of the three core surfaces (each clip is under 30 seconds):
+Short walkthroughs of the three core surfaces (each clip is under 30 seconds). GitHub renders GIFs reliably in README; MP4 sources are linked under each clip.
 
 ### AI Portfolio Assistant
 
 Ask questions about your holdings in plain English. The agent uses read-only MCP tools over your live portfolio data.
 
-<video src="assets/demos/Clip_ai.mp4" controls muted loop width="720">
-  <a href="assets/demos/Clip_ai.mp4">Download AI assistant demo</a>
-</video>
+![AI Portfolio Assistant demo](assets/demos/Clip_ai.gif)
+
+[Download MP4](assets/demos/Clip_ai.mp4)
 
 ### Macro Pulse
 
 Nine macro indicators with health zones, portfolio exposure breakdown, and AI commentary tied to your holdings.
 
-<video src="assets/demos/Clips_macropulse.mp4" controls muted loop width="720">
-  <a href="assets/demos/Clips_macropulse.mp4">Download Macro Pulse demo</a>
-</video>
+![Macro Pulse demo](assets/demos/Clip_macropulse.gif)
+
+[Download MP4](assets/demos/Clips_macropulse.mp4)
 
 ### Markets & AI News
 
 Market headlines and portfolio-specific news with AI summaries and sentiment tags.
 
-<video src="assets/demos/clip_market_ai.mp4" controls muted loop width="720">
-  <a href="assets/demos/clip_market_ai.mp4">Download Markets demo</a>
-</video>
+![Markets and AI news demo](assets/demos/Clip_market_ai.gif)
+
+[Download MP4](assets/demos/clip_market_ai.mp4)
 
 ---
 
