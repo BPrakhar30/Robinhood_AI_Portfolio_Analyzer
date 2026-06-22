@@ -20,14 +20,33 @@
 
 ## Demo
 
-**Live app:** https://myportfoliocopilot.com/
+**Live app:** [myportfoliocopilot.com](https://myportfoliocopilot.com/)
 
-<!-- Add a 30-60s GIF here after recording (Dashboard → AI chat → Macro Pulse). -->
-<!-- Recommended: record with OBS or Windows Game Bar, convert with ffmpeg or ezgif.com -->
+Short walkthroughs of the three core surfaces (each clip is under 30 seconds):
 
-| Dashboard | AI assistant | Macro pulse |
-|:---:|:---:|:---:|
-| *Add screenshot* | *Add screenshot* | *Add screenshot* |
+### AI Portfolio Assistant
+
+Ask questions about your holdings in plain English. The agent uses read-only MCP tools over your live portfolio data.
+
+<video src="assets/demos/Clip_ai.mp4" controls muted loop width="720">
+  <a href="assets/demos/Clip_ai.mp4">Download AI assistant demo</a>
+</video>
+
+### Macro Pulse
+
+Nine macro indicators with health zones, portfolio exposure breakdown, and AI commentary tied to your holdings.
+
+<video src="assets/demos/Clips_macropulse.mp4" controls muted loop width="720">
+  <a href="assets/demos/Clips_macropulse.mp4">Download Macro Pulse demo</a>
+</video>
+
+### Markets & AI News
+
+Market headlines and portfolio-specific news with AI summaries and sentiment tags.
+
+<video src="assets/demos/clip_market_ai.mp4" controls muted loop width="720">
+  <a href="assets/demos/clip_market_ai.mp4">Download Markets demo</a>
+</video>
 
 ---
 
