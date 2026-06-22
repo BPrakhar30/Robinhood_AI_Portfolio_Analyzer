@@ -12,7 +12,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const fullBleed = pathname.startsWith("/assistant");
 
-  // App shell intentionally has NO max-width on its content well — the same
+  // App shell intentionally has NO max-width on its content well  -  the same
   // pattern Linear, Vercel, GitHub, Notion, and Robinhood web all use for
   // dashboards. Internal grids/cards spread to fill the viewport. Only padding
   // scales. Capping here was the root cause of "concentrated in the center"

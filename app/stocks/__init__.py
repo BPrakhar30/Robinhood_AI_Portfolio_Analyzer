@@ -1,4 +1,4 @@
-"""Per-symbol market data — quotes, candles, profiles, earnings, news.
+"""Per-symbol market data  -  quotes, candles, profiles, earnings, news.
 
 This module is intentionally decoupled from ``app/markets/`` (which is
 broad market headlines + earnings calendar). It owns every endpoint used

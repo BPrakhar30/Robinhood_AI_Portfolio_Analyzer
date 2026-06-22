@@ -3,7 +3,7 @@
 /**
  * Voice-to-text via the browser's built-in Web Speech API
  * (SpeechRecognition). No audio ever leaves through our backend and no
- * API key is required — recognition is handled by the browser/OS engine.
+ * API key is required  -  recognition is handled by the browser/OS engine.
  *
  * Final transcripts are appended through `onTranscript`; interim results
  * are surfaced separately so the UI can preview them without committing.
@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Minimal typings — lib.dom doesn't ship SpeechRecognition types everywhere.
+// Minimal typings  -  lib.dom doesn't ship SpeechRecognition types everywhere.
 interface SpeechRecognitionResultLike {
   isFinal: boolean;
   0: { transcript: string };

@@ -79,7 +79,7 @@ export default function AssistantPage() {
   const [temporaryMode, setTemporaryMode] = useState(false);
   const [tempMessages, setTempMessages] = useState<ChatMessage[]>([]);
 
-  // Inline message editor — only one message is editable at a time.
+  // Inline message editor  -  only one message is editable at a time.
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
 
@@ -154,7 +154,7 @@ export default function AssistantPage() {
 
   // "New chat" is intentionally deferred: it only clears the current
   // selection so the welcome screen shows. The session row is created on
-  // the very first user message — this keeps empty placeholder sessions
+  // the very first user message  -  this keeps empty placeholder sessions
   // out of the sidebar.
   const handleNewChat = useCallback(() => {
     abortRef.current?.abort();
@@ -703,7 +703,7 @@ function IncognitoToggle({
     </>
   );
 
-  // Chat mode (no label) shows the icon alone — no tooltip, by request.
+  // Chat mode (no label) shows the icon alone  -  no tooltip, by request.
   // Welcome mode keeps the tooltip so first-time users get the affordance.
   if (!showLabel) {
     return (
@@ -876,7 +876,7 @@ function MessageActions({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — silently ignore. */
+      /* clipboard blocked  -  silently ignore. */
     }
   };
 

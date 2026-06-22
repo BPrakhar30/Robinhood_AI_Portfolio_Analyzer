@@ -18,7 +18,7 @@ Tracing strategy
 Token behavior
 --------------
 - If ``LOGFIRE_TOKEN`` is empty, ``send_to_logfire='if-token-present'`` makes
-  the whole stack a no-op — so local dev without a Logfire account still
+  the whole stack a no-op  -  so local dev without a Logfire account still
   works. When a token is set, spans ship to the Logfire UI.
 - ``console`` output is enabled in development so you can see spans in the
   terminal without leaving your editor.
@@ -87,14 +87,14 @@ def setup_logfire(service_name: str, app: "FastAPI | None" = None) -> None:
     # UI renders chat transcripts, MCP tool args/results, and token usage).
     logfire.instrument_pydantic_ai()
 
-    # Outbound HTTP — market data, RSS, MCP, broker APIs.
+    # Outbound HTTP  -  market data, RSS, MCP, broker APIs.
     logfire.instrument_httpx(capture_headers=False)
 
     # Inbound HTTP (FastAPI only, not the MCP server's internal transport).
     if app is not None:
         logfire.instrument_fastapi(app, capture_headers=False)
 
-    # SQLAlchemy — wrap the app's async engine if it exists.
+    # SQLAlchemy  -  wrap the app's async engine if it exists.
     try:
         from app.database.engine import async_engine  # noqa: WPS433
 
@@ -103,7 +103,7 @@ def setup_logfire(service_name: str, app: "FastAPI | None" = None) -> None:
         # MCP server process doesn't touch the DB; safe to skip.
         pass
 
-    # Process metrics (CPU, memory) — only meaningful in long-running servers.
+    # Process metrics (CPU, memory)  -  only meaningful in long-running servers.
     try:
         logfire.instrument_system_metrics()
     except Exception:  # noqa: BLE001

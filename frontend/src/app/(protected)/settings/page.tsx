@@ -50,7 +50,7 @@ export default function SettingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground">Name</p>
-                <p className="text-sm font-medium">{user?.full_name || "—"}</p>
+                <p className="text-sm font-medium">{user?.full_name || " - "}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email</p>
@@ -65,7 +65,7 @@ export default function SettingsPage() {
                         day: "numeric",
                         year: "numeric",
                       })
-                    : "—"}
+                    : " - "}
                 </p>
               </div>
               <div>

@@ -11,7 +11,7 @@ Rules:
   affects THIS investor's portfolio, using their exposure percentages.
 - Final sentence: one clear, actionable takeaway (what to watch or do).
 - Use simple, direct language. No jargon without explanation.
-- Be opinionated — state what the data says, don't hedge.
+- Be opinionated  -  state what the data says, don't hedge.
 - Never say "consult a financial advisor."
 - Keep the total under 100 words.
 """
@@ -43,7 +43,7 @@ Be direct about risks and opportunities.
 **## Key Takeaways**
 3–4 bullet points starting with "•". Each bullet should be one actionable
 insight or watchpoint. Reference specific holdings or sectors when relevant.
-Be opinionated — say what the data suggests, don't hedge.
+Be opinionated  -  say what the data suggests, don't hedge.
 
 Rules:
 - Use simple language a non-finance person can understand.

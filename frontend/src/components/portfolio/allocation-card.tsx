@@ -133,7 +133,7 @@ export function AllocationSection({ title, data }: AllocationSectionProps) {
           })}
         </div>
 
-        {/* Donut ring — sticky on desktop */}
+        {/* Donut ring  -  sticky on desktop */}
         <div className="w-full shrink-0 self-start sm:max-w-xs sm:self-center lg:sticky lg:top-4 lg:w-64 lg:self-start">
           <div className="relative h-56 min-w-0 lg:h-64 [&_.recharts-sector]:outline-none [&_.recharts-pie]:outline-none">
             {/* ``minWidth`` / ``minHeight`` of 0 suppress Recharts' "-1 dims"
@@ -171,7 +171,7 @@ export function AllocationSection({ title, data }: AllocationSectionProps) {
               </PieChart>
             </ResponsiveContainer>
 
-            {/* Center — category title by default, segment info on interaction */}
+            {/* Center  -  category title by default, segment info on interaction */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               {displayIndex !== null && data[displayIndex] ? (
                 <div className="text-center px-1">

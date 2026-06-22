@@ -759,7 +759,7 @@ def aggregate_export(
     if api_key:
         logger.info("Finnhub API key loaded")
     else:
-        logger.warning("FINNHUB_API_KEY is empty — current prices will be zero")
+        logger.warning("FINNHUB_API_KEY is empty  -  current prices will be zero")
 
     reader = csv.DictReader(io.StringIO(csv_content))
     raw_rows: List[dict] = []
@@ -941,7 +941,7 @@ def aggregate_export(
         avg_cost = _quantize(pos.cost / pos.qty, D2)
         quantity = _quantize(pos.qty, D6)
         # Cost basis of shares still held (matches the live Robinhood adapter:
-        # avg_cost * quantity), not cumulative buys — otherwise gain % is
+        # avg_cost * quantity), not cumulative buys  -  otherwise gain % is
         # understated after partial sells.
         invested = _quantize(pos.cost, D2)
 

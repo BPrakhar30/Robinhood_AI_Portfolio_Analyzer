@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    description="AI Portfolio Copilot for Robinhood users — "
+    description="AI Portfolio Copilot for Robinhood users  -  "
     "securely connects accounts, analyzes portfolios, and provides AI-driven insights.",
     version="0.1.0",
     lifespan=lifespan,
@@ -117,7 +117,7 @@ async def app_exception_handler(request: Request, exc: AppException):
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    """Catch-all — never leak raw exceptions to the client."""
+    """Catch-all  -  never leak raw exceptions to the client."""
     logger.error(
         f"Unhandled exception: {exc}",
         extra={"event": "unhandled_error", "error": str(exc)},

@@ -36,7 +36,7 @@ slowapi>=0.1.9
 pandas>=1.5.0
 numpy>=1.24.0
 
-# Market data (quotes, candles, company info). Unofficial Yahoo wrapper —
+# Market data (quotes, candles, company info). Unofficial Yahoo wrapper  - 
 # used by app/stocks/service.py.
 yfinance>=0.2.50
 

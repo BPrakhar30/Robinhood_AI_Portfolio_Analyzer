@@ -1,4 +1,4 @@
-"""CSV portfolio import — fallback when OAuth/Plaid aren't available.
+"""CSV portfolio import  -  fallback when OAuth/Plaid aren't available.
 
 Headers are normalized (trim, lower, spaces → underscores). Unrealized P/L
 is derived from ``current_price`` when ``unrealized_gains`` is absent.
@@ -98,7 +98,7 @@ def _enrich_live_prices(
     """Blocking: fill in missing current prices (Finnhub → yfinance fallback)
     and recompute unrealized P/L for rows where the user didn't supply it.
 
-    Mutates ``positions`` in place. Failures are non-fatal — positions keep
+    Mutates ``positions`` in place. Failures are non-fatal  -  positions keep
     whatever price the upload provided (possibly 0).
     """
     missing = [p for p in positions if (p.current_price or 0) <= 0]
@@ -188,7 +188,7 @@ class CSVImportAdapter(BrokerInterface):
 
         if is_robinhood_export(header_cols):
             logger.info(
-                "Detected Robinhood transaction export — running aggregation engine"
+                "Detected Robinhood transaction export  -  running aggregation engine"
             )
             self._positions, self._transactions = aggregate_export(csv_content)
             unrealized_explicit = [False] * len(self._positions)

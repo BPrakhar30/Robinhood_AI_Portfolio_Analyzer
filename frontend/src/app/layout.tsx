@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "RobinhoodAI Copilot",
-  description: "AI Portfolio Copilot for Robinhood users — securely connect, analyze, and optimize your portfolio.",
+  description: "AI Portfolio Copilot for Robinhood users  -  securely connect, analyze, and optimize your portfolio.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

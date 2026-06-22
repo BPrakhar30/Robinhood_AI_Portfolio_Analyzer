@@ -1,10 +1,10 @@
 """Markets HTTP surface: macro news + portfolio-specific news.
 
-Earnings endpoints now live in ``app/stocks/`` — the Markets page no
+Earnings endpoints now live in ``app/stocks/``  -  the Markets page no
 longer exposes an earnings tab. Keep this router focused on two things:
 
-  * ``GET /markets/news``           — broad market news (RSS + Finnhub).
-  * ``GET /markets/portfolio-news`` — per-holding company-news digest for
+  * ``GET /markets/news``            -  broad market news (RSS + Finnhub).
+  * ``GET /markets/portfolio-news``  -  per-holding company-news digest for
                                       the signed-in user's book.
 """
 

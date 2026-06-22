@@ -68,7 +68,7 @@ export default function DashboardPage() {
         description="Your portfolio overview and account connections"
       />
 
-      {/* No connections — onboarding */}
+      {/* No connections  -  onboarding */}
       {!hasConnections && (
         <Card className="border-dashed border-2">
           <CardContent className="py-10 px-6">
@@ -130,7 +130,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Macro Alert banner — threshold-triggered, only shows when active */}
+      {/* Macro Alert banner  -  threshold-triggered, only shows when active */}
       {hasConnections && macroAlerts.length > 0 && (
         <Link href="/macro-pulse" className="group block">
           <Card className={cn(
@@ -215,7 +215,7 @@ export default function DashboardPage() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Health Score</p>
                       <p className="text-xs text-muted-foreground">
-                        {healthScore.grade} — {healthScore.top_issues[0]?.split(":")[0] || "Looking good"}
+                        {healthScore.grade}  -  {healthScore.top_issues[0]?.split(":")[0] || "Looking good"}
                       </p>
                     </div>
                     <div className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 px-3 py-1 text-xs font-medium text-amber-700 transition-colors group-hover:bg-amber-500 group-hover:text-white dark:text-amber-400 sm:ml-auto">

@@ -28,7 +28,7 @@ class ChatSessionUpdate(BaseModel):
 
 
 class ChatSessionOut(BaseModel):
-    """Summary view for sidebar listings — no message payload."""
+    """Summary view for sidebar listings  -  no message payload."""
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -2,7 +2,7 @@
 One-time migration: add columns introduced during the security hardening pass
 that do not yet exist in the live database.
 
-Safe to run multiple times — each ALTER uses IF NOT EXISTS.
+Safe to run multiple times  -  each ALTER uses IF NOT EXISTS.
 """
 
 import asyncio

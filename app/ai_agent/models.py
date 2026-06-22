@@ -1,6 +1,6 @@
 """Typed Pydantic models returned by assistant tools and API.
 
-These are the ONLY shape the LLM sees for portfolio data — a firewall
+These are the ONLY shape the LLM sees for portfolio data  -  a firewall
 between ORM internals and model context.
 """
 

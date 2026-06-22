@@ -75,7 +75,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         loadingSessions: false,
       });
     } catch (err) {
-      // Don't mark as hydrated on failure — a transient error would otherwise
+      // Don't mark as hydrated on failure  -  a transient error would otherwise
       // lock the sidebar into "no conversations" for the store's lifetime.
       console.error("Failed to load chat sessions", err);
       set({ loadingSessions: false });
@@ -181,7 +181,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const existing = prev.messages[sessionId] ?? [];
     if (fromIndex < 0 || fromIndex >= existing.length) return;
 
-    // Optimistic local truncation — edit / regenerate flows rely on the
+    // Optimistic local truncation  -  edit / regenerate flows rely on the
     // UI updating before the network round-trip completes.
     const trimmed = existing.slice(0, fromIndex);
     set((s) => ({

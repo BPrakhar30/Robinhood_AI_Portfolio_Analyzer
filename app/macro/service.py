@@ -35,7 +35,7 @@ logger = get_logger("macro.service")
 from app.utils.cache import BoundedTTLCache
 
 _indicator_cache = BoundedTTLCache(maxsize=128, default_ttl=5 * 60)
-_INDICATOR_TTL = 5 * 60  # 5 minutes — macro tickers move slowly
+_INDICATOR_TTL = 5 * 60  # 5 minutes  -  macro tickers move slowly
 
 _exposure_cache = BoundedTTLCache(maxsize=256, default_ttl=15 * 60)
 _EXPOSURE_TTL = 15 * 60  # 15 minutes per user
@@ -178,7 +178,7 @@ _INDICATORS = [
 
 def _fmt_number(val: float | None, unit: str = "", decimals: int = 2) -> str:
     if val is None:
-        return "—"
+        return " - "
     if abs(val) >= 1_000_000_000:
         return f"{val / 1e9:,.1f}B{unit}"
     if abs(val) >= 1_000_000:
@@ -190,7 +190,7 @@ def _fmt_number(val: float | None, unit: str = "", decimals: int = 2) -> str:
 
 def _fmt_change(pct: float | None) -> str:
     if pct is None:
-        return "—"
+        return " - "
     sign = "+" if pct >= 0 else ""
     return f"{sign}{pct:.2f}%"
 
@@ -201,7 +201,7 @@ def _fmt_change(pct: float | None) -> str:
 def _fetch_indicators_sync() -> list[dict]:
     """Blocking: batch-download macro tickers via yfinance."""
     if not _YF:
-        logger.warning("yfinance not available — returning empty indicators")
+        logger.warning("yfinance not available  -  returning empty indicators")
         return []
 
     tickers = [ind["ticker"] for ind in _INDICATORS]
@@ -262,7 +262,7 @@ def _fetch_indicators_sync() -> list[dict]:
 
 
 async def fetch_macro_indicators() -> list[dict]:
-    """Async wrapper — returns cached or freshly-fetched indicators."""
+    """Async wrapper  -  returns cached or freshly-fetched indicators."""
     cached = _cache_get(_indicator_cache, "macro_indicators", _INDICATOR_TTL)
     if cached is not None:
         return cached
@@ -357,7 +357,7 @@ def _compute_signal(ind: dict) -> tuple[str, str]:
                 return "bullish", "Risk appetite returning"
         return "neutral", "Stable"
 
-    return "neutral", "—"
+    return "neutral", " - "
 
 
 # ── Portfolio exposure computation ────────────────────────────────────
@@ -432,7 +432,7 @@ def compute_portfolio_exposure(
     """Compute portfolio's macro exposure scores from position data.
 
     Resolves sector from Position.sector first, then falls back to the
-    sp500.json/ETF lookup by symbol — so holdings with NULL sector in the
+    sp500.json/ETF lookup by symbol  -  so holdings with NULL sector in the
     DB still get classified correctly.
     """
     sector_lookup = _load_sector_lookup()
@@ -488,7 +488,7 @@ def compute_portfolio_exposure(
             energy_value += mv
             cat_symbols["energy"].append((mv, symbol))
 
-        # International revenue — flag symbols with high overseas revenue
+        # International revenue  -  flag symbols with high overseas revenue
         intl_pct = _HIGH_INTL_REVENUE.get(symbol, 20)
         intl_value += mv * (intl_pct / 100)
         if intl_pct >= 40:

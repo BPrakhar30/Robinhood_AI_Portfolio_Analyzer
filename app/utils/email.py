@@ -37,7 +37,7 @@ async def send_verification_email(
 ) -> None:
     settings = get_settings()
 
-    # Dev: no SMTP — print code directly to stdout.
+    # Dev: no SMTP  -  print code directly to stdout.
     if settings.app_env == Environment.DEVELOPMENT:
         border = "=" * 60
         print(f"\n[backend] {border}")

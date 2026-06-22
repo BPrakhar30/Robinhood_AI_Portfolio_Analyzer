@@ -1,7 +1,7 @@
 """Wire-level DTOs for per-symbol market data.
 
 Every field here is shaped for direct consumption by the Stock Detail
-page and the assistant MCP tools — no ORM leak.
+page and the assistant MCP tools  -  no ORM leak.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ AssetTypeLiteral = Literal[
 
 
 class StockProfile(BaseModel):
-    """Company / fund profile — powers the About section."""
+    """Company / fund profile  -  powers the About section."""
 
     symbol: str
     name: str
@@ -53,7 +53,7 @@ class StockProfile(BaseModel):
 
 
 class StockQuote(BaseModel):
-    """Latest quote snapshot — powers the page header pricing."""
+    """Latest quote snapshot  -  powers the page header pricing."""
 
     symbol: str
     price: Optional[float] = None

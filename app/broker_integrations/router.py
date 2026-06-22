@@ -104,7 +104,7 @@ async def initiate_robinhood(
         )
 
         if result["status"] == "authenticated":
-            # No MFA needed — complete the connection immediately
+            # No MFA needed  -  complete the connection immediately
             service = BrokerService(session)
             connection = await service.connect_robinhood_with_tokens(
                 user=current_user,

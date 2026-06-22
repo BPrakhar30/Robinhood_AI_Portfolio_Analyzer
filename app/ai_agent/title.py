@@ -1,6 +1,6 @@
 """LLM-generated, de-duplicated chat session titles.
 
-Invoked exactly once per session — after the first assistant turn finishes —
+Invoked exactly once per session  -  after the first assistant turn finishes  - 
 to replace the default ``"New chat"`` placeholder with a short, human
 title. Kept in its own module so the prompt can evolve independently of the
 main assistant agent, and so caching / fallback behaviour is explicit.
@@ -36,14 +36,14 @@ from app.utils.logging import get_logger
 
 logger = get_logger("ai_agent.title")
 
-# Hard cap — titles truncate here if the model over-produces.
+# Hard cap  -  titles truncate here if the model over-produces.
 _MAX_TITLE_CHARS = 60
 # Fallback source: first N chars of the user prompt when the LLM is
 # unavailable. Shorter than ``_MAX_TITLE_CHARS`` so it reads like a title.
 _FALLBACK_CHARS = 50
 
 # Unicode ranges for emoji / pictographic / dingbat glyphs. ``re.UNICODE``
-# is implicit in Python 3 — kept explicit here as a readability cue.
+# is implicit in Python 3  -  kept explicit here as a readability cue.
 _EMOJI_RE = re.compile(
     "["
     "\U0001F300-\U0001F6FF"  # misc symbols & pictographs, transport
@@ -71,7 +71,7 @@ Hard requirements:
 - Describe the topic, not the format (good: "Tech Sector Concentration Risk";
   bad: "User Question About My Portfolio").
 - Absolutely no emoji, pictographs, icons, or decorative symbols of any kind.
-- Do NOT use any of the "Existing titles" provided — pick a clearly distinct
+- Do NOT use any of the "Existing titles" provided  -  pick a clearly distinct
   wording. Near-duplicates (same first 2-3 words) also count as collisions.
 - Do NOT wrap the title in quotes or add any prefix like "Title:".
 
@@ -123,7 +123,7 @@ def _clean(text: str) -> str:
 def _disambiguate(title: str, existing: Iterable[str]) -> str:
     """Append a numeric suffix if ``title`` collides with an existing one.
 
-    Case-insensitive exact match only — near-duplicates are the model's job.
+    Case-insensitive exact match only  -  near-duplicates are the model's job.
     """
     existing_lower = {t.strip().lower() for t in existing if t and t.strip()}
     if title.lower() not in existing_lower:
@@ -133,7 +133,7 @@ def _disambiguate(title: str, existing: Iterable[str]) -> str:
         candidate = f"{title} ({i})"
         if candidate.lower() not in existing_lower:
             return candidate
-    # Extreme edge case: 100 collisions. Let it through — better than blocking.
+    # Extreme edge case: 100 collisions. Let it through  -  better than blocking.
     return title
 
 
@@ -165,7 +165,7 @@ async def generate_session_title(
     existing_block = (
         "\n".join(f"- {t}" for t in existing_list[:25]) if existing_list else "(none)"
     )
-    # Trim answer aggressively — context for the model, not a document.
+    # Trim answer aggressively  -  context for the model, not a document.
     answer_snippet = (answer or "").strip().replace("\n", " ")
     if len(answer_snippet) > 400:
         answer_snippet = answer_snippet[:400] + "…"

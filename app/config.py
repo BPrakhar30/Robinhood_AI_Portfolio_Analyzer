@@ -32,7 +32,7 @@ _INSECURE_DEFAULTS = frozenset(
     }
 )
 
-# Symmetric HMAC algorithms only — prevents downgrade tricks (e.g. "none")
+# Symmetric HMAC algorithms only  -  prevents downgrade tricks (e.g. "none")
 # from sneaking in via a misconfigured JWT_ALGORITHM env var.
 _ALLOWED_JWT_ALGORITHMS = frozenset({"HS256", "HS384", "HS512"})
 
@@ -108,7 +108,7 @@ class Settings(BaseSettings):
     mcp_server_url: str = "http://mcp-server:8765/mcp"
 
     # Observability (Pydantic Logfire)
-    # Leave token empty to disable cloud shipping — Logfire becomes a no-op locally.
+    # Leave token empty to disable cloud shipping  -  Logfire becomes a no-op locally.
     # Get a free token at https://logfire.pydantic.dev (10M spans/month free tier).
     logfire_token: str = ""
     # Also emit spans to the console in dev for quick inspection without the web UI.

@@ -45,7 +45,7 @@ function timeAgo(isoOrUnix: string): string {
 }
 
 function formatPrice(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || Number.isNaN(n)) return " - ";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -53,7 +53,7 @@ function formatPrice(n: number | null | undefined): string {
 }
 
 function formatPercent(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || Number.isNaN(n)) return " - ";
   const sign = n > 0 ? "+" : "";
   return `${sign}${n.toFixed(2)}%`;
 }
@@ -446,7 +446,7 @@ function StockRow({ card }: { card: StockCardType }) {
             </p>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-sm font-medium tabular-nums">
-                {card.price != null ? `$${formatPrice(card.price)}` : "—"}
+                {card.price != null ? `$${formatPrice(card.price)}` : " - "}
               </span>
               <span
                 className={cn(

@@ -20,7 +20,7 @@ logger = get_logger("macro.ai_service")
 
 def _sanitise(text: str) -> str:
     """Replace em dashes with a plain hyphen for consistent UI display."""
-    return text.replace("—", " - ").replace("\u2014", " - ")
+    return text.replace(" - ", " - ").replace("\u2014", " - ")
 
 
 # Successful results cached for 15 minutes; failed results cached for 3 minutes
@@ -39,10 +39,10 @@ def _build_macro_prompt(
 ) -> str:
     parts = ["Current macro indicators:\n"]
     for ind in indicators:
-        val = ind.get("display_value", "—")
+        val = ind.get("display_value", " - ")
         chg = ind.get("change_display", "")
         sig = ind.get("signal_label", "")
-        parts.append(f"- {ind['label']}: {val} ({chg}) — {sig}")
+        parts.append(f"- {ind['label']}: {val} ({chg})  -  {sig}")
 
     parts.append("\nYour portfolio exposure:")
     parts.append(f"- Growth stocks: {exposure.get('growth_pct', 0):.0f}%")
@@ -62,7 +62,7 @@ def _build_macro_prompt(
             price = h.get("current_price", 0)
             mv = float(qty or 0) * float(price or 0)
             if mv > 0:
-                parts.append(f"- {sym} ({sector or 'Unknown'}) — ${mv:,.0f}")
+                parts.append(f"- {sym} ({sector or 'Unknown'})  -  ${mv:,.0f}")
 
     return "\n".join(parts)
 

@@ -5,7 +5,7 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-XSS-Protection", value: "1; mode=block" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // microphone=(self) — required for the assistant's voice-to-text input
+  // microphone=(self)  -  required for the assistant's voice-to-text input
   { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
 ];
 

@@ -26,7 +26,7 @@ def _rate_limit_storage_uri() -> str:
     """Use Redis only when explicitly configured; fall back to in-memory.
 
     The default redis_url value ("redis://localhost:6379/0") is a placeholder
-    for local dev — using it unconditionally causes a hard crash when Redis
+    for local dev  -  using it unconditionally causes a hard crash when Redis
     is not running. Only switch to Redis when the URL is overridden via env.
     """
     default = "redis://localhost:6379/0"

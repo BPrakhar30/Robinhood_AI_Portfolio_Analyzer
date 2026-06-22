@@ -122,7 +122,7 @@ export default function TransactionsPage() {
                     <div>
                       <p className="text-xs text-muted-foreground">Fees</p>
                       <p className="tabular-nums text-muted-foreground">
-                        {txn.fees > 0 ? `$${txn.fees.toFixed(2)}` : "—"}
+                        {txn.fees > 0 ? `$${txn.fees.toFixed(2)}` : " - "}
                       </p>
                     </div>
                   </div>
@@ -173,7 +173,7 @@ export default function TransactionsPage() {
                         <CurrencyText value={txn.total_amount} className="text-sm font-medium" />
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground text-sm tabular-nums">
-                        {txn.fees > 0 ? `$${txn.fees.toFixed(2)}` : "—"}
+                        {txn.fees > 0 ? `$${txn.fees.toFixed(2)}` : " - "}
                       </TableCell>
                     </TableRow>
                   ))}

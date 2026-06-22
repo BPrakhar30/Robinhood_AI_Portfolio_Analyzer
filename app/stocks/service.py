@@ -5,7 +5,7 @@ and Finnhub for company profile, news, and earnings. Every outbound call
 is wrapped in a short-TTL in-memory cache to keep the Stock Detail page
 feeling instant while still surviving the Finnhub free-tier rate limit.
 
-yfinance is synchronous — we run every yfinance call inside
+yfinance is synchronous  -  we run every yfinance call inside
 ``asyncio.to_thread`` so we don't block the event loop.
 
 All public functions return typed Pydantic models from ``schemas.py``.
@@ -31,7 +31,7 @@ try:
     import yfinance as yf  # noqa: F401  (used inside threads)
 
     _YF_AVAILABLE = True
-except Exception:  # pragma: no cover — yfinance missing in some envs
+except Exception:  # pragma: no cover  -  yfinance missing in some envs
     yf = None  # type: ignore[assignment]
     _YF_AVAILABLE = False
 
@@ -66,11 +66,11 @@ from app.utils.cache import BoundedTTLCache
 
 _cache = BoundedTTLCache(maxsize=4096, default_ttl=900)
 
-QUOTE_TTL = 60           # 1 min — prices move
-PROFILE_TTL = 24 * 3600  # 24 h — profiles rarely change
-KEYSTATS_TTL = 15 * 60   # 15 min — fundamentals update slowly
-EARNINGS_TTL = 60 * 60   # 1 h — EPS history doesn't change intra-day
-NEWS_TTL = 5 * 60        # 5 min — news is the only fast-moving field
+QUOTE_TTL = 60           # 1 min  -  prices move
+PROFILE_TTL = 24 * 3600  # 24 h  -  profiles rarely change
+KEYSTATS_TTL = 15 * 60   # 15 min  -  fundamentals update slowly
+EARNINGS_TTL = 60 * 60   # 1 h  -  EPS history doesn't change intra-day
+NEWS_TTL = 5 * 60        # 5 min  -  news is the only fast-moving field
 CANDLES_TTL_FAST = 60    # 1 min for intraday (1D / 1W)
 CANDLES_TTL_SLOW = 15 * 60  # 15 min for daily+
 
@@ -107,7 +107,7 @@ def _load_sp500_seed() -> list[dict[str, str]]:
     try:
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception as exc:  # noqa: BLE001 — never break the endpoint
+    except Exception as exc:  # noqa: BLE001  -  never break the endpoint
         logger.error(f"Failed to load sp500.json: {exc}")
         return []
 
@@ -170,7 +170,7 @@ def _market_symbol(symbol: str, asset_type: Optional[str] = None) -> str:
 
 
 def _yf_ticker(symbol: str):
-    """Construct a yfinance Ticker — BRK.B / RDS.B use hyphens on Yahoo."""
+    """Construct a yfinance Ticker  -  BRK.B / RDS.B use hyphens on Yahoo."""
     if yf is None:
         raise RuntimeError("yfinance is not installed")
     return yf.Ticker(_market_symbol(symbol))
@@ -201,7 +201,7 @@ def _yf_fast_info(symbol: str) -> dict[str, Any]:
 
 
 def _yf_info(symbol: str) -> dict[str, Any]:
-    """Blocking: full ``.info`` dict. Heavier than fast_info — use sparingly."""
+    """Blocking: full ``.info`` dict. Heavier than fast_info  -  use sparingly."""
     t = _yf_ticker(symbol)
     try:
         info = t.get_info()  # type: ignore[attr-defined]
@@ -660,10 +660,10 @@ async def fetch_profile(symbol: str) -> StockProfile:
         _cache_set(key, profile, ttl=PROFILE_TTL)
         return profile
 
-    # 1) Finnhub /stock/profile2 — canonical source for sector/industry/logo.
+    # 1) Finnhub /stock/profile2  -  canonical source for sector/industry/logo.
     fin = await _finnhub_get("/stock/profile2", {"symbol": symbol}) or {}
 
-    # 2) yfinance .info — richer free-text fields (description, CEO, HQ).
+    # 2) yfinance .info  -  richer free-text fields (description, CEO, HQ).
     info: dict[str, Any] = {}
     if _YF_AVAILABLE:
         try:
@@ -852,7 +852,7 @@ def _derive_host(url: str) -> Optional[str]:
 # known publisher because Finnhub's ``source`` text is occasionally wrong
 # (it sometimes labels an article "Yahoo" when the URL goes to Reuters).
 # For finnhub.io aggregator URLs the hostname is useless, so we fall back
-# to Finnhub's ``source`` field — see ``_publisher_for_article``.
+# to Finnhub's ``source`` field  -  see ``_publisher_for_article``.
 _PUBLISHER_BY_HOST: dict[str, str] = {
     "reuters.com": "Reuters",
     "bloomberg.com": "Bloomberg",
@@ -913,7 +913,7 @@ def _humanize_host(host: str) -> str:
 
 # Hosts where the URL itself is just a redirector / aggregator and tells
 # us nothing about the actual publisher. For these we MUST fall back to
-# Finnhub's ``source`` field — humanizing the hostname would render
+# Finnhub's ``source`` field  -  humanizing the hostname would render
 # "Finnhub" or "Google" on every card.
 _AGGREGATOR_HOSTS: set[str] = {
     "finnhub.io",
@@ -945,7 +945,7 @@ def _publisher_for_article(url: str, finnhub_source: Optional[str]) -> str:
       1. URL hostname mapped to a known publisher (most accurate).
       2. Finnhub's ``source`` text when it isn't generic.
       3. For aggregator URLs (``finnhub.io`` etc.) we MUST use Finnhub's
-         text even if generic — humanizing the hostname would label every
+         text even if generic  -  humanizing the hostname would label every
          card "Finnhub", which is exactly the bug we're fixing.
       4. Humanize the hostname as a last resort.
 
@@ -1109,7 +1109,7 @@ async def fetch_symbol_news(symbol: str, *, limit: int = 12) -> StockNewsRespons
     return out
 
 
-# ── Position summary (optional — built by the router) ────────────────
+# ── Position summary (optional  -  built by the router) ────────────────
 
 
 def build_position_summary(
@@ -1226,7 +1226,7 @@ def _yf_batch_download(symbols: list[str]) -> dict[str, dict]:
 
     Returns ``{SYMBOL: {"price": float, "prev_close": float, "change_pct": float}}``.
     """
-    import pandas as pd  # local import — only needed here
+    import pandas as pd  # local import  -  only needed here
 
     if not symbols:
         return {}
@@ -1249,7 +1249,7 @@ def _yf_batch_download(symbols: list[str]) -> dict[str, dict]:
 
     result: dict[str, dict] = {}
 
-    # Single-ticker download doesn't group by ticker — columns are flat OHLCV.
+    # Single-ticker download doesn't group by ticker  -  columns are flat OHLCV.
     if len(symbols) == 1:
         sym = symbols[0]
         try:
@@ -1437,7 +1437,7 @@ async def fetch_universe_cards(
     )
 
 
-# ── Portfolio news aggregation (lives here — router in markets calls it) ──
+# ── Portfolio news aggregation (lives here  -  router in markets calls it) ──
 
 
 # Publishers we consider reputable for portfolio-news ranking. Used as a
@@ -1460,7 +1460,7 @@ async def aggregate_portfolio_news(
     Only articles we can confirm are about a stock the user actually owns
     are returned. ``fetch_symbol_news`` already verifies the queried symbol
     against the headline/summary (or a related ticker), so here we simply
-    drop anything that came back with no verified tag — those are the
+    drop anything that came back with no verified tag  -  those are the
     spurious "stock X is mentioned somewhere on the page" cases that gave
     us mis-tagged cards in the previous version.
 

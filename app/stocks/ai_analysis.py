@@ -97,7 +97,7 @@ well-timed relative to key levels?
 momentum shifts that would change the outlook.
 - Be direct and factual.
 
-Hard rule: NEVER use the em dash (—) character anywhere in your response. \
+Hard rule: NEVER use the em dash ( - ) character anywhere in your response. \
 Use a regular hyphen (-) or restructure the sentence instead.
 """
 
@@ -170,7 +170,7 @@ def _build_user_prompt(
 
 def _sanitise(text: str) -> str:
     """Replace em dashes with a plain hyphen-space for consistent UI display."""
-    return text.replace("—", " - ").replace("\u2014", " - ")
+    return text.replace(" - ", " - ").replace("\u2014", " - ")
 
 
 # ── Section parser ───────────────────────────────────────────────────

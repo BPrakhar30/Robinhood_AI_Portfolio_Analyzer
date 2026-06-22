@@ -62,7 +62,7 @@ class TransactionType(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    # UUIDv4 primary key — opaque, non-sequential, safe to expose in tokens and logs.
+    # UUIDv4 primary key  -  opaque, non-sequential, safe to expose in tokens and logs.
     # Generated client-side (Python) so we know the id before the INSERT returns.
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
@@ -104,7 +104,7 @@ class User(Base):
 
 class BrokerConnection(Base):
     __tablename__ = "broker_connections"
-    # One row per (user, broker_type) — prevents duplicate connections for the same integration.
+    # One row per (user, broker_type)  -  prevents duplicate connections for the same integration.
     __table_args__ = (
         UniqueConstraint("user_id", "broker_type", name="uq_user_broker"),
     )
@@ -123,7 +123,7 @@ class BrokerConnection(Base):
     token_expires_at = Column(DateTime(timezone=True), nullable=True)
     last_sync_at = Column(DateTime(timezone=True), nullable=True)
     sync_error_message = Column(Text, nullable=True)
-    # Python name metadata_ maps to DB column "metadata" — avoids shadowing SQLAlchemy's reserved ``metadata``.
+    # Python name metadata_ maps to DB column "metadata"  -  avoids shadowing SQLAlchemy's reserved ``metadata``.
     metadata_ = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -234,7 +234,7 @@ class ChatSession(Base):
     ``agent_history`` stores the serialized PydanticAI ``ModelMessage`` list
     (the agent's internal view of the conversation, including tool calls and
     responses). It is rewritten with ``result.all_messages_json()`` after every
-    turn. ``ChatMessage`` rows are the UI-facing view — cheap to list without
+    turn. ``ChatMessage`` rows are the UI-facing view  -  cheap to list without
     rehydrating the agent blob.
     """
 
@@ -250,7 +250,7 @@ class ChatSession(Base):
     title = Column(String(255), nullable=False, default="New chat")
     starred = Column(Boolean, default=False, nullable=False)
     archived = Column(Boolean, default=False, nullable=False)
-    # JSON on SQLAlchemy maps to JSONB on Postgres — structured, queryable.
+    # JSON on SQLAlchemy maps to JSONB on Postgres  -  structured, queryable.
     # Holds the output of ``result.all_messages_json()`` (a list of ModelMessage dicts).
     agent_history = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
@@ -294,7 +294,7 @@ class UserMemory(Base):
     """Persistent cross-session memory for the AI portfolio assistant.
 
     Each user has at most one row. ``facts`` is a JSON array of short strings
-    (≤ 25 items) extracted by the LLM from completed conversations — things
+    (≤ 25 items) extracted by the LLM from completed conversations  -  things
     like investment style, risk tolerance, goals, and frequently discussed
     tickers. They are injected into the system prompt of every future session
     so the assistant feels contextually aware across conversations.
@@ -320,7 +320,7 @@ class UserMemory(Base):
 class SymbolMetadata(Base):
     """Persistent cache for Finnhub symbol profile lookups.
 
-    Keyed by ticker symbol — only called once per symbol until the row
+    Keyed by ticker symbol  -  only called once per symbol until the row
     goes stale (checked via ``updated_at``).
     """
 

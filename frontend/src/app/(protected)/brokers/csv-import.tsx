@@ -186,7 +186,7 @@ export function CSVImportForm({ onSuccess }: Props) {
             <div className="flex flex-col items-center gap-1 text-muted-foreground">
               <Upload className="h-6 w-6" />
               <p className="text-sm">Click to upload CSV or Excel</p>
-              <p className="text-xs">.csv, .xlsx, .xls — or drag and drop</p>
+              <p className="text-xs">.csv, .xlsx, .xls  -  or drag and drop</p>
             </div>
           )}
           <input

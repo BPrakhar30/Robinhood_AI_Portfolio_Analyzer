@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy.sh — run on the VPS to pull latest code and rebuild production containers
+# deploy.sh  -  run on the VPS to pull latest code and rebuild production containers
 #
 # Usage (from the repo root on the server):
 #   bash scripts/deploy.sh

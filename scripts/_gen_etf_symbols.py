@@ -12,7 +12,7 @@ from __future__ import annotations
 # Curated US-listed ETFs: Vanguard, iShares, SPDR, Schwab, Invesco, ARK, ProShares,
 # Direxion, Global X, VanEck, WisdomTree, Dimensional, Avantis, PIMCO, JPMorgan,
 # commodity, bond, intl, thematic, leveraged. ~600+ symbols; not every US ETF
-# (3000+) — use a security master API for true completeness.
+# (3000+)  -  use a security master API for true completeness.
 SYMS = """
 AAA AADR AAXJ ACES ACIM ACIO ACWI ACWV ACWX AIA AIRR AIQ AIVI AIVL ALTL AMJ AMOM AMLP AMZA ANGL
 AOA AOK AOM AOR ARGT ARKB ARKG ARKK ARKQ ARKW ARKX ASHR ASHS ATMP AUGM AVDE AVEM AVIG AVLV AVSC AVUS AVUV

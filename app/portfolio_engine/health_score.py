@@ -369,8 +369,8 @@ def _conc_description(score: float, d: dict) -> str:
     if score >= 75:
         return f"No single holding dominates. Top position ({top}) is {pct:.0f}%."
     if score >= 50:
-        return f"{top} is {pct:.0f}% of your portfolio — moderate concentration."
-    return f"{top} is {pct:.0f}% of your portfolio — high single-stock risk."
+        return f"{top} is {pct:.0f}% of your portfolio  -  moderate concentration."
+    return f"{top} is {pct:.0f}% of your portfolio  -  high single-stock risk."
 
 
 def _ovl_description(score: float, d: dict) -> str:
@@ -381,8 +381,8 @@ def _ovl_description(score: float, d: dict) -> str:
     if score >= 80:
         return f"Minimal ETF overlap. Largest overlap is {pair} at {ov:.0f}%."
     if score >= 50:
-        return f"Moderate ETF overlap — {pair} share {ov:.0f}% of holdings."
-    return f"High ETF redundancy — {pair} overlap by {ov:.0f}%. Consider consolidating."
+        return f"Moderate ETF overlap  -  {pair} share {ov:.0f}% of holdings."
+    return f"High ETF redundancy  -  {pair} overlap by {ov:.0f}%. Consider consolidating."
 
 
 def _vol_description(score: float, d: dict) -> str:
@@ -397,10 +397,10 @@ def _vol_description(score: float, d: dict) -> str:
 def _exp_description(score: float, d: dict) -> str:
     er = d.get("weighted_expense_ratio_pct", 0)
     if score >= 85:
-        return f"Excellent cost efficiency — weighted ER is {er:.2f}%."
+        return f"Excellent cost efficiency  -  weighted ER is {er:.2f}%."
     if score >= 50:
-        return f"Reasonable expenses — weighted ER is {er:.2f}%."
-    return f"High expense drag — weighted ER is {er:.2f}%. Look for lower-cost alternatives."
+        return f"Reasonable expenses  -  weighted ER is {er:.2f}%."
+    return f"High expense drag  -  weighted ER is {er:.2f}%. Look for lower-cost alternatives."
 
 
 def _build_issues(sub_scores: dict) -> list[str]:

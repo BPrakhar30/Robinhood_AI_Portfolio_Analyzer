@@ -4,7 +4,7 @@ Three endpoints:
 
   - ``GET /stocks``             : paginated stock-card grid (S&P 500 seed + user holdings).
   - ``GET /stocks/{symbol}``    : composite detail payload (profile + quote + candles* + earnings + news + position).
-  - ``GET /stocks/{symbol}/candles`` : candles only — time-range selector calls this as the user switches ranges.
+  - ``GET /stocks/{symbol}/candles`` : candles only  -  time-range selector calls this as the user switches ranges.
 
 The /stocks/{symbol} response includes a default candles range (``1M``) so
 the first paint is instant; subsequent range changes hit the candles-only
@@ -81,7 +81,7 @@ async def list_stocks(
     universe: str = Query(
         "all",
         pattern="^(all|owned)$",
-        description="'all' (default) or 'owned' — filter to just the user's holdings.",
+        description="'all' (default) or 'owned'  -  filter to just the user's holdings.",
     ),
     search: Optional[str] = Query(None, min_length=1, max_length=50),
     limit: int = Query(120, ge=1, le=300),
@@ -173,7 +173,7 @@ async def get_stock_detail(
     position = await _build_position_summary(symbol, db, current_user.id)
     try:
         return await fetch_stock_detail(symbol, position=position)
-    except Exception as exc:  # noqa: BLE001 — never leak upstream errors
+    except Exception as exc:  # noqa: BLE001  -  never leak upstream errors
         from app.utils.logging import get_logger as _gl
         _gl("stocks.router").error(
             "Stock detail fetch failed",

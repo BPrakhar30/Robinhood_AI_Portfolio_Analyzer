@@ -1,7 +1,7 @@
 """FastMCP server hosting the read-only portfolio tools.
 
 ``user_id`` is injected as MCP request metadata by the backend's
-``process_tool_call`` hook — the LLM never sees or submits it. Missing
+``process_tool_call`` hook  -  the LLM never sees or submits it. Missing
 metadata raises (no permissive default).
 
 Note: ``host``/``port``/``transport_security`` must be passed at
@@ -71,7 +71,7 @@ mcp = FastMCP(
     name="portfolio-tools",
     instructions=(
         "Read-only portfolio data for the signed-in user. All tools return "
-        "structured, typed data; none accept or need a user identifier — the "
+        "structured, typed data; none accept or need a user identifier  -  the "
         "signed-in user is resolved server-side."
     ),
     host=_HOST,
@@ -301,7 +301,7 @@ async def get_performance_summary(
             end_date=latest.captured_at,
             has_data=False,
             note=(
-                "Only one snapshot available in this window — cannot compute a "
+                "Only one snapshot available in this window  -  cannot compute a "
                 "change. Try a longer period or sync more data."
             ),
         )
@@ -325,7 +325,7 @@ async def get_performance_summary(
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Per-symbol tools — let the assistant reason over individual holdings
+# Per-symbol tools  -  let the assistant reason over individual holdings
 # ──────────────────────────────────────────────────────────────────────
 
 
@@ -341,7 +341,7 @@ def _normalize_symbol(symbol: str) -> str:
 
 @mcp.tool()
 async def get_symbol_profile(ctx: Context, symbol: str) -> StockProfile:
-    """Company/fund profile for ``symbol`` — name, sector, industry, HQ, CEO, employees, description."""
+    """Company/fund profile for ``symbol``  -  name, sector, industry, HQ, CEO, employees, description."""
     user_id = _extract_user_id(ctx)
     sym = _normalize_symbol(symbol)
     profile = await stocks_service.fetch_profile(sym)
@@ -351,7 +351,7 @@ async def get_symbol_profile(ctx: Context, symbol: str) -> StockProfile:
 
 @mcp.tool()
 async def get_symbol_quote(ctx: Context, symbol: str) -> StockQuote:
-    """Latest quote for ``symbol`` — price, previous close, day change %, volume."""
+    """Latest quote for ``symbol``  -  price, previous close, day change %, volume."""
     user_id = _extract_user_id(ctx)
     sym = _normalize_symbol(symbol)
     quote = await stocks_service.fetch_quote(sym)
@@ -361,7 +361,7 @@ async def get_symbol_quote(ctx: Context, symbol: str) -> StockQuote:
 
 @mcp.tool()
 async def get_symbol_key_stats(ctx: Context, symbol: str) -> StockKeyStats:
-    """Key fundamentals for ``symbol`` — market cap, P/E, EPS, beta, 52-wk range, dividend yield."""
+    """Key fundamentals for ``symbol``  -  market cap, P/E, EPS, beta, 52-wk range, dividend yield."""
     user_id = _extract_user_id(ctx)
     sym = _normalize_symbol(symbol)
     stats = await stocks_service.fetch_key_stats(sym)
@@ -393,7 +393,7 @@ async def get_symbol_earnings(
 
 
 class CandleSummary(BaseModel):
-    """Compact historical-price summary — avoids flooding the LLM with raw bars."""
+    """Compact historical-price summary  -  avoids flooding the LLM with raw bars."""
 
     symbol: str
     range: str
@@ -416,7 +416,7 @@ async def get_symbol_candles_summary(
     Returns start/end price, period change %, and the min/max close over the
     window. We deliberately return a **summary** (not the full candle list)
     because the assistant almost always needs trend direction and magnitude,
-    not raw bars — and raw bars would blow out the context window.
+    not raw bars  -  and raw bars would blow out the context window.
     """
     user_id = _extract_user_id(ctx)
     sym = _normalize_symbol(symbol)

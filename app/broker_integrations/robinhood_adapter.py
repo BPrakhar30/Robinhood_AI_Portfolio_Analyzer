@@ -79,11 +79,11 @@ class RobinhoodAdapter(BrokerInterface):
     """
     Broker adapter for Robinhood.
 
-    Two-step MFA flow (static methods — no instance needed):
+    Two-step MFA flow (static methods  -  no instance needed):
         ``initiate_login``  → sends credentials, returns challenge info
         ``complete_mfa``    → sends MFA code, completes the stored challenge
 
-    Data fetching (instance methods — call after ``set_access_token``):
+    Data fetching (instance methods  -  call after ``set_access_token``):
         ``get_positions``, ``get_transactions``, ``get_cash_balance``, etc.
     """
 
@@ -190,7 +190,7 @@ class RobinhoodAdapter(BrokerInterface):
                     "payload": payload,
                 }
 
-            detail = data.get("detail", "Login failed — check your credentials.")
+            detail = data.get("detail", "Login failed  -  check your credentials.")
             return {"_error": str(detail)}
 
         logger.info(
@@ -414,7 +414,7 @@ class RobinhoodAdapter(BrokerInterface):
 
             if not login_result or "access_token" not in login_result:
                 raise BrokerAuthenticationError(
-                    "Robinhood login failed — invalid credentials or MFA required.",
+                    "Robinhood login failed  -  invalid credentials or MFA required.",
                     details={"broker": "robinhood"},
                 )
 

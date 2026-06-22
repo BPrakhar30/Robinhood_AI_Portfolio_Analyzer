@@ -177,7 +177,7 @@ class AssistantService:
                     yield {"type": "delta", "text": delta}
 
             tools_used = _collect_tools_used(result)
-            # Serialize inside the context — some accessors require the
+            # Serialize inside the context  -  some accessors require the
             # stream to be fully drained first.
             all_messages_json = (
                 to_jsonable_python(result.all_messages())

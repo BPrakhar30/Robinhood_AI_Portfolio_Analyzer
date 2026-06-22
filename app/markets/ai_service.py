@@ -5,7 +5,7 @@ decoupled from the portfolio assistant:
 
 * Different system prompts, tuned for news editing vs. portfolio analysis.
 * No per-user deps or tool calls to the DB (news is public data).
-* Batched calls — one LLM request summarizes 10–15 articles at once to fit
+* Batched calls  -  one LLM request summarizes 10–15 articles at once to fit
   inside Gemini's free-tier 10 RPM without blowing the budget on reloads.
 * In-memory TTL cache keyed by a hash of the article URL, so identical
   articles aren't re-summarized every time a client refreshes.
@@ -42,7 +42,7 @@ import re
 
 def _sanitise(text: str) -> str:
     """Replace em dashes with a plain hyphen for consistent UI display."""
-    return text.replace("—", " - ").replace("\u2014", " - ")
+    return text.replace(" - ", " - ").replace("\u2014", " - ")
 
 
 # Belt-and-suspenders: strip any filler the model still emits despite the
@@ -93,7 +93,7 @@ def _enforce_summary_shape(text: Optional[str], *, max_words: int = 80) -> Optio
     if not out:
         return None
     if out[-1] not in ".!?":
-        out = out.rstrip(" ,;:-—…") + "."
+        out = out.rstrip(" ,;:- - …") + "."
     return out
 
 logger = get_logger("markets.ai_service")
@@ -103,7 +103,7 @@ logger = get_logger("markets.ai_service")
 
 from app.utils.cache import BoundedTTLCache
 
-_SUMMARY_TTL_SECONDS = 1800  # 30 minutes — long enough to dodge reload storms
+_SUMMARY_TTL_SECONDS = 1800  # 30 minutes  -  long enough to dodge reload storms
 _summary_cache = BoundedTTLCache(maxsize=2048, default_ttl=_SUMMARY_TTL_SECONDS)
 
 
@@ -133,7 +133,7 @@ def _summarizer_agent() -> Agent[None, list[str]]:
         settings.google_model,
         provider=GoogleProvider(api_key=settings.google_api_key),
     )
-    # No system prompt here — we pass it per call so headlines and dev cards
+    # No system prompt here  -  we pass it per call so headlines and dev cards
     # share one agent instance with different framing.
     return Agent(model, output_type=list[str])
 
@@ -199,7 +199,7 @@ async def _batch_summarize(
         logger.warning(f"Markets {kind} summarization failed: {exc}")
         return [None] * len(articles)
 
-    # Guard against count mismatch — pad/truncate to input length.
+    # Guard against count mismatch  -  pad/truncate to input length.
     if len(summaries) < len(articles):
         summaries = summaries + [None] * (len(articles) - len(summaries))  # type: ignore[list-item]
     elif len(summaries) > len(articles):
@@ -227,7 +227,7 @@ async def enrich_headlines(headlines: list[dict[str, Any]]) -> list[dict[str, An
     if not headlines:
         return headlines
 
-    # ``:hl2`` cache namespace forces a refresh after the prompt rewrite —
+    # ``:hl2`` cache namespace forces a refresh after the prompt rewrite  - 
     # old prose summaries cached under the previous key shape are ignored.
     keys = [_hash_url(h.get("url", ""), h.get("title", "")) + ":hl2" for h in headlines]
     cached = [_cache_get(k) for k in keys]
@@ -282,7 +282,7 @@ async def enrich_developments(articles: list[dict[str, Any]]) -> list[dict[str, 
 
 
 # Strips ANY combination of leading bullet glyphs, dashes, asterisks, and
-# whitespace — handles models that emit "• ", "** ", "- ", and even nested
+# whitespace  -  handles models that emit "• ", "** ", "- ", and even nested
 # garbage like "• • " or "* - " at the start of a line.
 _LEADING_BULLET_RE = re.compile(r"^[\u2022\u2023\u25E6\u2043\-\*\s]+")
 
@@ -380,7 +380,7 @@ _NEGATIVE_KEYWORDS = re.compile(
 def _infer_sentiment(bullets: list[str]) -> str:
     """Infer sentiment from bullet content when the LLM omits the tag.
 
-    Scans all bullets (especially bullet 3 — portfolio impact) for
+    Scans all bullets (especially bullet 3  -  portfolio impact) for
     positive/negative signal words. Returns "positive", "negative", or
     "neutral".
     """
@@ -475,7 +475,7 @@ async def enrich_portfolio_news(articles: list[dict[str, Any]]) -> list[dict[str
     """Attach a 3-bullet ``ai_summary`` and ``sentiment`` to each portfolio-news card.
 
     Architecture:
-    1. Extract ALL SENTIMENT tags from the raw text BEFORE splitting —
+    1. Extract ALL SENTIMENT tags from the raw text BEFORE splitting  - 
        this prevents tags from being lost to block-boundary errors.
     2. Strip sentiment lines, then split into per-article bullet blocks.
     3. For any article missing an explicit SENTIMENT tag, infer it from

@@ -189,7 +189,7 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
         </div>
 
         {needsCodeInput ? (
-          /* SMS / email / authenticator — code entry */
+          /* SMS / email / authenticator  -  code entry */
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -246,7 +246,7 @@ export function RobinhoodConnectForm({ onSuccess }: Props) {
             </button>
           </form>
         ) : (
-          /* Push notification — auto-triggered with countdown */
+          /* Push notification  -  auto-triggered with countdown */
           <div className="space-y-4">
             {/* Countdown progress */}
             <div className="space-y-2">

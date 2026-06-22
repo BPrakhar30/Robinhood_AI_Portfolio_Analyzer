@@ -347,7 +347,7 @@ class BrokerService:
             raise BrokerConnectionError("Connection not found")
 
         if connection.status == ConnectionStatus.DISCONNECTED:
-            raise BrokerConnectionError("Connection is disconnected — reconnect first")
+            raise BrokerConnectionError("Connection is disconnected  -  reconnect first")
 
         adapter = _get_adapter(connection.broker_type)
 
@@ -373,7 +373,7 @@ class BrokerService:
 
             elif connection.broker_type == BrokerType.CSV:
                 raise PortfolioSyncError(
-                    "CSV connections cannot be re-synced — re-upload the file"
+                    "CSV connections cannot be re-synced  -  re-upload the file"
                 )
 
             await self._sync_portfolio(adapter, connection, user.id)

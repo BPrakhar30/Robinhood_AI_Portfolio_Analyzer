@@ -110,7 +110,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 class AuthService:
     """
     Handles user registration, login, email verification, and JWT token management.
-    Passwords are hashed with bcrypt — never stored in plaintext.
+    Passwords are hashed with bcrypt  -  never stored in plaintext.
     """
 
     def __init__(self, session: AsyncSession):

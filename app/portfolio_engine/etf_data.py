@@ -6,7 +6,7 @@ Coverage: top ~150 ETFs by AUM (captures >95% of retail ETF holdings),
 top ~35 ETFs for overlap detection, comprehensive sector/industry betas,
 and individual ETF beta overrides for the most common funds.
 
-Refreshed manually or via a scheduled job — does not need real-time data.
+Refreshed manually or via a scheduled job  -  does not need real-time data.
 """
 
 # ── S&P 500 approximate sector weights (%) ──────────────────────────

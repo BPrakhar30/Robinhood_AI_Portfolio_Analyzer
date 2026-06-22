@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DataPrefetcher — fires React Query prefetch calls the moment the
+ * DataPrefetcher  -  fires React Query prefetch calls the moment the
  * authenticated app shell mounts, before the user has navigated anywhere.
  *
  * This mirrors the pattern ChatHydrator uses for chat sessions: render
@@ -21,7 +21,7 @@ export function DataPrefetcher() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Fire-and-forget — React Query deduplicates concurrent calls so even
+    // Fire-and-forget  -  React Query deduplicates concurrent calls so even
     // if a page component mounts simultaneously the network request is only
     // issued once.
     queryClient.prefetchQuery({
@@ -42,7 +42,7 @@ export function DataPrefetcher() {
       staleTime: 5 * 60_000,
     });
 
-    // Macro Pulse is the heaviest call (LLM enrichment) — start it immediately
+    // Macro Pulse is the heaviest call (LLM enrichment)  -  start it immediately
     // so the page is warm in cache before the user navigates there.
     queryClient.prefetchQuery({
       queryKey: ["macro", "pulse"],

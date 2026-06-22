@@ -48,7 +48,7 @@ import type {
 // ── Formatters ────────────────────────────────────────────────────
 
 function fmtPrice(n: number | null | undefined, digits = 2): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || Number.isNaN(n)) return " - ";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -56,13 +56,13 @@ function fmtPrice(n: number | null | undefined, digits = 2): string {
 }
 
 function fmtPercent(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || Number.isNaN(n)) return " - ";
   const sign = n > 0 ? "+" : "";
   return `${sign}${n.toFixed(2)}%`;
 }
 
 function fmtCompact(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || Number.isNaN(n)) return " - ";
   const abs = Math.abs(n);
   if (abs >= 1e12) return `${(n / 1e12).toFixed(2)}T`;
   if (abs >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
@@ -72,12 +72,12 @@ function fmtCompact(n: number | null | undefined): string {
 }
 
 function fmtInt(n: number | null | undefined): string {
-  if (n == null) return "—";
+  if (n == null) return " - ";
   return n.toLocaleString("en-US");
 }
 
 function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return " - ";
   try {
     return new Date(iso).toLocaleDateString("en-US", {
       year: "numeric",
@@ -328,7 +328,7 @@ function PositionCard({ pos }: { pos: StockPositionSummary }) {
           />
           <Stat
             label="Avg cost"
-            value={pos.average_cost != null ? `$${fmtPrice(pos.average_cost)}` : "—"}
+            value={pos.average_cost != null ? `$${fmtPrice(pos.average_cost)}` : " - "}
           />
           <Stat
             label="Invested"
@@ -340,7 +340,7 @@ function PositionCard({ pos }: { pos: StockPositionSummary }) {
               <span className={up ? "text-emerald-600" : "text-red-500"}>
                 {pos.todays_return != null
                   ? `${pos.todays_return >= 0 ? "+" : ""}$${fmtPrice(Math.abs(pos.todays_return))}`
-                  : "—"}{" "}
+                  : " - "}{" "}
                 ({fmtPercent(pos.todays_return_percent)})
               </span>
             }
@@ -351,7 +351,7 @@ function PositionCard({ pos }: { pos: StockPositionSummary }) {
               <span className={up ? "text-emerald-600" : "text-red-500"}>
                 {pos.total_return != null
                   ? `${pos.total_return >= 0 ? "+" : ""}$${fmtPrice(Math.abs(pos.total_return))}`
-                  : "—"}{" "}
+                  : " - "}{" "}
                 ({fmtPercent(pos.total_return_percent)})
               </span>
             }
@@ -413,7 +413,7 @@ function AboutCard({ profile }: { profile: StockProfile }) {
     { label: "Exchange", value: profile.exchange },
     { label: "Industry", value: profile.industry },
     { label: "Sector", value: profile.sector },
-  ].filter((r) => r.value != null && r.value !== "" && r.value !== "—");
+  ].filter((r) => r.value != null && r.value !== "" && r.value !== " - ");
 
   return (
     <Card>
@@ -459,29 +459,29 @@ function AboutCard({ profile }: { profile: StockProfile }) {
 
 function KeyStatsCard({ stats }: { stats: StockKeyStats }) {
   const items: { label: string; value: string }[] = [
-    { label: "Market cap", value: stats.market_cap ? `$${fmtCompact(stats.market_cap)}` : "—" },
+    { label: "Market cap", value: stats.market_cap ? `$${fmtCompact(stats.market_cap)}` : " - " },
     { label: "P/E (TTM)", value: fmtPrice(stats.pe_ratio) },
     { label: "Forward P/E", value: fmtPrice(stats.forward_pe) },
-    { label: "EPS (TTM)", value: stats.eps_ttm != null ? `$${fmtPrice(stats.eps_ttm)}` : "—" },
+    { label: "EPS (TTM)", value: stats.eps_ttm != null ? `$${fmtPrice(stats.eps_ttm)}` : " - " },
     { label: "Beta", value: fmtPrice(stats.beta) },
     {
       label: "Dividend yield",
       value:
         stats.dividend_yield != null
           ? `${(stats.dividend_yield * 100).toFixed(2)}%`
-          : "—",
+          : " - ",
     },
     {
       label: "52-wk high",
-      value: stats.fifty_two_week_high != null ? `$${fmtPrice(stats.fifty_two_week_high)}` : "—",
+      value: stats.fifty_two_week_high != null ? `$${fmtPrice(stats.fifty_two_week_high)}` : " - ",
     },
     {
       label: "52-wk low",
-      value: stats.fifty_two_week_low != null ? `$${fmtPrice(stats.fifty_two_week_low)}` : "—",
+      value: stats.fifty_two_week_low != null ? `$${fmtPrice(stats.fifty_two_week_low)}` : " - ",
     },
-    { label: "Open", value: stats.open_price != null ? `$${fmtPrice(stats.open_price)}` : "—" },
-    { label: "Day high", value: stats.day_high != null ? `$${fmtPrice(stats.day_high)}` : "—" },
-    { label: "Day low", value: stats.day_low != null ? `$${fmtPrice(stats.day_low)}` : "—" },
+    { label: "Open", value: stats.open_price != null ? `$${fmtPrice(stats.open_price)}` : " - " },
+    { label: "Day high", value: stats.day_high != null ? `$${fmtPrice(stats.day_high)}` : " - " },
+    { label: "Day low", value: stats.day_low != null ? `$${fmtPrice(stats.day_low)}` : " - " },
     { label: "Volume", value: fmtCompact(stats.volume) },
     { label: "Avg volume", value: fmtCompact(stats.average_volume) },
     {
@@ -579,10 +579,10 @@ function EarningsCard({
                         {q.quarter && q.year ? `Q${q.quarter} ${q.year}` : fmtDate(q.date)}
                       </td>
                       <td className="py-2 px-2 text-right tabular-nums">
-                        {q.eps_estimate != null ? `$${fmtPrice(q.eps_estimate)}` : "—"}
+                        {q.eps_estimate != null ? `$${fmtPrice(q.eps_estimate)}` : " - "}
                       </td>
                       <td className="py-2 px-2 text-right tabular-nums">
-                        {q.eps_actual != null ? `$${fmtPrice(q.eps_actual)}` : "—"}
+                        {q.eps_actual != null ? `$${fmtPrice(q.eps_actual)}` : " - "}
                       </td>
                       <td
                         className={cn(
@@ -595,7 +595,7 @@ function EarningsCard({
                         {q.surprise_percent != null
                           ? `${q.surprise_percent.toFixed(2)}%`
                           : q.reported
-                          ? "—"
+                          ? " - "
                           : "Not reported"}
                       </td>
                     </tr>

@@ -1,7 +1,7 @@
 """Fernet encryption for broker OAuth tokens at rest.
 
 ``get_encryptor()`` is a process-wide singleton. A missing
-``encryption_key`` falls back to an in-memory random key — ciphertext
+``encryption_key`` falls back to an in-memory random key  -  ciphertext
 becomes unreadable across restarts until a stable key is configured.
 """
 
@@ -13,7 +13,7 @@ from app.utils.exceptions import EncryptionError
 class TokenEncryptor:
     """
     Encrypts and decrypts broker tokens using Fernet symmetric encryption.
-    Tokens are never stored in plaintext — this is a fintech-level requirement.
+    Tokens are never stored in plaintext  -  this is a fintech-level requirement.
     """
 
     def __init__(self):
@@ -74,7 +74,7 @@ _encryptor: TokenEncryptor | None = None
 
 
 def get_encryptor() -> TokenEncryptor:
-    # Lazy singleton — first caller initializes; avoids import-time side effects.
+    # Lazy singleton  -  first caller initializes; avoids import-time side effects.
     global _encryptor
     if _encryptor is None:
         _encryptor = TokenEncryptor()

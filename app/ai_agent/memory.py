@@ -13,7 +13,7 @@ patterns) applied to this codebase:
      the latest exchange (investment goals, risk tolerance, favourite tickers,
      portfolio concerns) and upserts them into ``UserMemory``. The next
      session begins with these facts injected into the system prompt so the
-     assistant feels contextually aware across conversations — like a
+     assistant feels contextually aware across conversations  -  like a
      financial advisor who remembers past meetings.
 
      Design choices:

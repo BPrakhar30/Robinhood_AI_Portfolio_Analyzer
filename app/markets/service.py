@@ -8,7 +8,7 @@ Uses httpx for async HTTP, xml.etree for RSS parsing, and in-memory caching
 with TTLs to avoid hammering upstream sources.
 
 Per-symbol market data (quotes, candles, profiles, earnings, company news)
-lives in ``app/stocks/`` — this module is intentionally scoped to broad
+lives in ``app/stocks/``  -  this module is intentionally scoped to broad
 cross-market headlines only.
 """
 
@@ -272,7 +272,7 @@ def _diversify_by_source(items: list[dict], limit: int, max_per_source: int) -> 
 
     Items are assumed to be pre-sorted by recency (newest first). We first
     walk the list respecting the per-source cap. If we fall short of
-    ``limit`` (rare — happens when the union has < ``limit`` sources * cap),
+    ``limit`` (rare  -  happens when the union has < ``limit`` sources * cap),
     we relax the cap and fill from the remainder to preserve recency.
     """
     chosen: list[dict] = []
@@ -381,7 +381,7 @@ async def fetch_market_news() -> dict:
         )
 
     # Sources list is strictly the union of outlets that actually contributed
-    # headlines or developments — never a hardcoded allow-list.
+    # headlines or developments  -  never a hardcoded allow-list.
     used_items = headline_items + development_items
     sources: list[dict] = []
     seen_src: set[str] = set()

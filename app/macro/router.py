@@ -53,7 +53,7 @@ async def get_macro_pulse(
 
     payload = await build_macro_pulse(positions)
 
-    # Run summaries sequentially — both call the same Gemini model and firing
+    # Run summaries sequentially  -  both call the same Gemini model and firing
     # them in parallel doubles the load, causing 503s under moderate traffic.
     ai_summary = await generate_macro_summary(
         payload["indicators"],

@@ -16,7 +16,7 @@ services:
     image: postgres:16-alpine
     container_name: robinhood-postgres
     restart: unless-stopped
-    # No ports: — Postgres is reachable only within the Docker network
+    # No ports:  -  Postgres is reachable only within the Docker network
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -35,7 +35,7 @@ services:
       dockerfile: Dockerfile
     container_name: robinhood-backend
     restart: unless-stopped
-    # No ports: — backend is only reachable through Caddy
+    # No ports:  -  backend is only reachable through Caddy
     env_file:
       - .env
     environment:
@@ -69,7 +69,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # No watchfiles in production — just run directly
+    # No watchfiles in production  -  just run directly
     command: python -m app.mcp_server
 
   frontend:
@@ -82,7 +82,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     container_name: robinhood-frontend
     restart: unless-stopped
-    # No ports: — frontend is only reachable through Caddy
+    # No ports:  -  frontend is only reachable through Caddy
     depends_on:
       - backend
 

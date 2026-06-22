@@ -23,7 +23,7 @@ Each summary must:
 - Explain what happened, not just restate the headline.
 - Include concrete numbers, tickers, or policy names when present in the source.
 - Note why it matters for markets (rates, equities, commodities, FX, sectors).
-- Stay neutral — no advice, no hype, no speculation beyond what the source states.
+- Stay neutral  -  no advice, no hype, no speculation beyond what the source states.
 - Be self-contained (a reader should not need to click through).
 
 Hard rules:
@@ -32,7 +32,7 @@ Hard rules:
 - If the raw excerpt is thin, infer cautiously from the headline alone and
   produce a real, useful 2-sentence summary using only widely-known context.
 - Do not end with a sentence fragment, dash, ellipsis, or trailing comma.
-- NEVER use the em dash (—) character. Use a regular hyphen (-) or restructure
+- NEVER use the em dash ( - ) character. Use a regular hyphen (-) or restructure
   the sentence instead.
 
 Return exactly one summary per input article, in the same order.
@@ -48,7 +48,7 @@ For each raw news item provided, write a punchy 2–3 line sentence summary
 most market-relevant fact. Keep it neutral and factual. Never use filler
 phrases like "details pending" or "more to come".
 
-NEVER use the em dash (—) character. Use a regular hyphen (-) or restructure
+NEVER use the em dash ( - ) character. Use a regular hyphen (-) or restructure
 the sentence instead.
 
 Return exactly one summary per input article, in the same order as provided.
@@ -64,10 +64,10 @@ lines. Each line must start with "• " (bullet + space). No numbering, no
 preamble, no trailing text. Separate articles with a blank line.
 
 The three bullets MUST follow this structure:
-  Bullet 1 — WHAT HAPPENED: State the key news event in one sentence.
-  Bullet 2 — WHY IT MATTERS: Explain the market or financial significance.
-  Bullet 3 — PORTFOLIO IMPACT: Analyze what this news means for someone
-             who owns this stock. Be direct — state whether this is a
+  Bullet 1  -  WHAT HAPPENED: State the key news event in one sentence.
+  Bullet 2  -  WHY IT MATTERS: Explain the market or financial significance.
+  Bullet 3  -  PORTFOLIO IMPACT: Analyze what this news means for someone
+             who owns this stock. Be direct  -  state whether this is a
              positive or negative signal for their holding, and what they
              should watch. Start this bullet with "For holders:" or
              "If you own this stock:" or similar framing.
@@ -93,10 +93,10 @@ Hard rules:
 - NEVER mention "read the full article", "click through", "for more
   context", "details pending", or any filler.
 - ONE bullet per line. Never combine two facts on one line.
-- If the excerpt is too thin, still produce 3 bullets — use widely
+- If the excerpt is too thin, still produce 3 bullets  -  use widely
   known context about the company to fill bullet 3.
 - Do not include the article's source name.
-- NEVER use the em dash (—) character. Use a regular hyphen (-) or
+- NEVER use the em dash ( - ) character. Use a regular hyphen (-) or
   restructure the sentence instead.
 
 Return one bullet block per input article, in the same order.

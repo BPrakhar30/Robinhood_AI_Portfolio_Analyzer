@@ -1,4 +1,4 @@
-"""Plaid broker adapter — fallback when direct Robinhood OAuth is unused.
+"""Plaid broker adapter  -  fallback when direct Robinhood OAuth is unused.
 
 ``PLAID_ENV_MAP`` maps ``development`` → Plaid Sandbox (SDK lacks a
 separate Development host). ``set_access_token`` rehydrates tokens from
@@ -69,7 +69,7 @@ class PlaidAdapter(BrokerInterface):
         settings = get_settings()
         if not settings.plaid_client_id or not settings.plaid_secret:
             logger.warning(
-                "Plaid credentials not configured — adapter will not work until configured"
+                "Plaid credentials not configured  -  adapter will not work until configured"
             )
             return
 
@@ -99,7 +99,7 @@ class PlaidAdapter(BrokerInterface):
         """
         if not self._client:
             raise BrokerConnectionError(
-                "Plaid client not initialized — check credentials"
+                "Plaid client not initialized  -  check credentials"
             )
 
         try:
@@ -138,7 +138,7 @@ class PlaidAdapter(BrokerInterface):
         """
         if not self._client:
             raise BrokerConnectionError(
-                "Plaid client not initialized — check credentials"
+                "Plaid client not initialized  -  check credentials"
             )
 
         public_token = credentials.get("public_token")
