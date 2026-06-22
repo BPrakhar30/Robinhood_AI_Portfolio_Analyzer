@@ -1,5 +1,7 @@
 # Robinhood AI Portfolio Copilot
 
+[![GitHub stars](https://img.shields.io/github/stars/BPrakhar30/Robinhood_AI_Portfolio_Analyzer?style=for-the-badge&logo=github)](https://github.com/BPrakhar30/Robinhood_AI_Portfolio_Analyzer/stargazers)
+[![CI](https://img.shields.io/github/actions/workflow/status/BPrakhar30/Robinhood_AI_Portfolio_Analyzer/ci.yml?branch=main&label=CI)](https://github.com/BPrakhar30/Robinhood_AI_Portfolio_Analyzer/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -7,11 +9,30 @@
 [![MCP](https://img.shields.io/badge/MCP-Tools-6366F1)](https://modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Production-style AI portfolio copilot**  -  connect Robinhood (or import CSV/Excel), analyze holdings with macro context, detect allocation risk, and chat with a **PydanticAI agent** backed by **MCP tools** and **Gemini 2.5 Flash**.
+**Production-style AI portfolio copilot** - connect Robinhood (or import CSV/Excel), analyze holdings with macro context, detect allocation risk, and chat with a **PydanticAI agent** backed by **MCP tools** and **Gemini 2.5 Flash**.
 
-> Built as a full-stack reference for agentic fintech: typed tools, read-only MCP isolation, SSE streaming, cross-session memory, and OpenTelemetry via Logfire.
+> Reference implementation for **PydanticAI + MCP + FastAPI**: typed read-only tools, isolated MCP server, SSE streaming, cross-session memory, and OpenTelemetry via Logfire. Useful if you're building agentic fintech or learning production agent patterns.
 
 **Quick start:** `cp .env.example .env` → set `GOOGLE_API_KEY` → `docker compose up --build` → open http://localhost:3000
+
+### Who stars this?
+
+- Engineers learning **MCP tool isolation** with a real FastAPI backend
+- Builders shipping **AI portfolio / fintech copilots**
+- Teams evaluating **PydanticAI + Logfire** in production-shaped code
+
+If this saves you time, **[a star helps others find it](https://github.com/BPrakhar30/Robinhood_AI_Portfolio_Analyzer/stargazers)**.
+
+---
+
+## Demo
+
+<!-- Add a 30-60s GIF here after recording (Dashboard → AI chat → Macro Pulse). -->
+<!-- Recommended: record with OBS or Windows Game Bar, convert with ffmpeg or ezgif.com -->
+
+| Dashboard | AI assistant | Macro pulse |
+|:---:|:---:|:---:|
+| *Add screenshot* | *Add screenshot* | *Add screenshot* |
 
 ---
 
