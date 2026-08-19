@@ -1,0 +1,13 @@
+# Grafana dashboard provider: loads JSON dashboards from this folder.
+apiVersion: 1
+
+providers:
+  - name: Portfolio Copilot
+    orgId: 1
+    folder: App
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

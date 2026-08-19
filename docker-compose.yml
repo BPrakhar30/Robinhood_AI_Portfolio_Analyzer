@@ -37,6 +37,11 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/robinhood_ai
       - DATABASE_URL_SYNC=postgresql://postgres:postgres@postgres:5432/robinhood_ai
       - WATCHFILES_FORCE_POLLING=true
+      # Export telemetry to the self-hosted collector in observability/.
+      # Override via .env (OTEL_EXPORTER_OTLP_ENDPOINT) to point elsewhere.
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,6 +66,9 @@ services:
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8765
       - WATCHFILES_FORCE_POLLING=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

@@ -26,6 +26,7 @@ Token behavior
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 import logfire
@@ -71,17 +72,36 @@ def setup_logfire(service_name: str, app: "FastAPI | None" = None) -> None:
 
     settings = get_settings()
 
+    # Self-hosted path: when an OTLP endpoint is configured, Logfire exports
+    # traces + metrics (+ logs) there over OTLP/HTTP and stops shipping to its
+    # own cloud. Otherwise keep the existing Logfire-cloud behavior.
+    if settings.otel_exporter_otlp_endpoint:
+        os.environ.setdefault(
+            "OTEL_EXPORTER_OTLP_ENDPOINT", settings.otel_exporter_otlp_endpoint
+        )
+        send_to_logfire: bool | str = False
+    else:
+        send_to_logfire = "if-token-present"
+
     logfire.configure(
         service_name=service_name,
         service_version="0.1.0",
         environment=settings.app_env.value,
         token=settings.logfire_token or None,
-        send_to_logfire="if-token-present",
+        send_to_logfire=send_to_logfire,
         console=logfire.ConsoleOptions(min_log_level="info")
         if settings.logfire_console
         else False,
         scrubbing=logfire.ScrubbingOptions(callback=_scrubbing_callback),
     )
+
+    # Bridge stdlib logging into OpenTelemetry logs so structured app logs
+    # flow to Loki with trace correlation. Degrades to a no-op if the
+    # installed Logfire version lacks this hook.
+    try:
+        logfire.instrument_logging()
+    except Exception:  # noqa: BLE001
+        pass
 
     # PydanticAI: captures agent runs, LLM calls, tool calls (v2 schema: the
     # UI renders chat transcripts, MCP tool args/results, and token usage).

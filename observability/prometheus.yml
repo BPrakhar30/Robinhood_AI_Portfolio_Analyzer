@@ -1,0 +1,8 @@
+# Prometheus (metric backend). Metrics arrive via remote write from the
+# OpenTelemetry Collector, so no scrape jobs are configured here.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Keep it quiet; there are no targets to scrape in this stack.
+scrape_configs: []

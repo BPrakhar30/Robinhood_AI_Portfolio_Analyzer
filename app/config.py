@@ -107,7 +107,7 @@ class Settings(BaseSettings):
     # MCP portfolio tools (Streamable HTTP). Compose default; override for bare-metal.
     mcp_server_url: str = "http://mcp-server:8765/mcp"
 
-    # Observability (Pydantic Logfire)
+    # Observability (Pydantic Logfire, built on OpenTelemetry)
     # Leave token empty to disable cloud shipping  -  Logfire becomes a no-op locally.
     # Get a free token at https://logfire.pydantic.dev (10M spans/month free tier).
     logfire_token: str = ""
@@ -115,6 +115,11 @@ class Settings(BaseSettings):
     logfire_console: bool = True
     # Scrub user questions / LLM prompts from Logfire exports. Turn off for debugging.
     logfire_scrub_prompts: bool = False
+    # Self-hosted OpenTelemetry endpoint (traces + metrics + logs via OTLP/HTTP).
+    # When set, Logfire stops shipping to its cloud and exports here instead
+    # (e.g. http://localhost:4318 for the local collector, or the collector
+    # service URL in the observability compose). Empty = Logfire cloud behavior.
+    otel_exporter_otlp_endpoint: str = ""
 
     model_config = {
         "env_file": str(_ENV_FILE),

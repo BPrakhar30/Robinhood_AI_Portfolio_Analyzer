@@ -8,6 +8,7 @@ https://ai.pydantic.dev/message-history/.
 
 from __future__ import annotations
 
+import time
 from typing import AsyncIterator, Optional
 from uuid import UUID
 
@@ -23,6 +24,7 @@ from app.chat.service import (
     persist_agent_turn,
 )
 from app.utils.logging import get_logger
+from app.utils.metrics import record_assistant_turn
 
 from .agent import AssistantDeps, get_agent
 from .memory import format_memory_for_prompt, get_user_memory, schedule_memory_extraction
@@ -47,6 +49,18 @@ def _collect_tools_used(result) -> list[str]:
     except Exception:  # noqa: BLE001 - telemetry only
         return []
     return tools_used
+
+
+def _extract_usage(result) -> tuple[int, int]:
+    """Pull input/output token counts from a finished agent run."""
+    try:
+        usage = result.usage()
+        return (
+            int(getattr(usage, "request_tokens", 0) or 0),
+            int(getattr(usage, "response_tokens", 0) or 0),
+        )
+    except Exception:  # noqa: BLE001 - telemetry only
+        return (0, 0)
 
 
 def _load_history(raw):
@@ -89,10 +103,20 @@ class AssistantService:
             user_memory=format_memory_for_prompt(memory_facts),
         )
         agent = get_agent()
+        started = time.perf_counter()
         result = await agent.run(question, deps=deps)
+        duration_s = time.perf_counter() - started
 
         tools_used = _collect_tools_used(result)
         answer = str(result.output)
+        request_tokens, response_tokens = _extract_usage(result)
+        record_assistant_turn(
+            self._user_id,
+            duration_s=duration_s,
+            request_tokens=request_tokens,
+            response_tokens=response_tokens,
+            tool_call_count=len(tools_used),
+        )
 
         schedule_memory_extraction(self._user_id, question, answer)
 
@@ -166,6 +190,8 @@ class AssistantService:
 
         # Accumulate deltas so the persisted message matches the client output.
         final_text_parts: list[str] = []
+        request_tokens = response_tokens = 0
+        started = time.perf_counter()
         async with agent.run_stream(
             question,
             deps=deps,
@@ -177,6 +203,7 @@ class AssistantService:
                     yield {"type": "delta", "text": delta}
 
             tools_used = _collect_tools_used(result)
+            request_tokens, response_tokens = _extract_usage(result)
             # Serialize inside the context  -  some accessors require the
             # stream to be fully drained first.
             all_messages_json = (
@@ -184,6 +211,15 @@ class AssistantService:
                 if session_id is not None
                 else None
             )
+
+        duration_s = time.perf_counter() - started
+        record_assistant_turn(
+            self._user_id,
+            duration_s=duration_s,
+            request_tokens=request_tokens,
+            response_tokens=response_tokens,
+            tool_call_count=len(tools_used),
+        )
 
         final_text = "".join(final_text_parts)
 

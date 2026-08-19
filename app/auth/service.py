@@ -461,4 +461,10 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Tag the active request span with the authenticated user so traces are
+    # filterable per user in the observability UI. Best-effort only.
+    from app.utils.metrics import set_user_attribute
+
+    set_user_attribute(user_id)
+
     return user
