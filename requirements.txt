@@ -50,9 +50,12 @@ email-validator>=2.0.0
 # AI Assistant
 # pydantic-ai-slim carries the google (Gemini), mcp, and duckduckgo optional extras.
 # ``openrouter`` is kept for backwards-compat; drop if you don't need it.
-pydantic-ai>=1.0.0
-pydantic-ai-slim[google,openrouter,mcp,duckduckgo]>=1.0.0
+pydantic-ai>=1.0.0,<2
+pydantic-ai-slim[google,openrouter,mcp,duckduckgo]>=1.0.0,<2
 fastmcp>=3.0.0
+
+# Agent evaluation harness (evals/) - same team as pydantic-ai, native Dataset/Case/Evaluator support.
+pydantic-evals>=1.0.0
 
 # Observability (Pydantic Logfire)
 # Instruments FastAPI, SQLAlchemy (via asyncpg), HTTPX, PydanticAI, and system metrics.
